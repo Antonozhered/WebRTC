@@ -12,24 +12,71 @@ After the consult last week, I realized it would be too difficult to realize a m
 
 
 ## Week 2 02.03-09.03
+### Goals
+1. Design the look of the website (check)
+2. set up the connection between the sender and receiver file
+3. set up the qr code connection with the phone
+4. write game logic and mechanics
+5. render game interface
+6. make the phone controller move the spaceship
+7. finish the MVP version of the game
+
 ### Design 
 First I made a player greeting screen with a space background using a figma noise texture plug in. It has an option to name the spaceship and a QR code to establish connection.
-[Greeting Screen Design Version 1](../greeting_screen_v1.png/)
+![Greeting Screen Design Version 1](../greeting_screen_v1.png/)
 
 Then I used some adobe stock svgs for invading aliens and spaceship, edited to fit the project, and palced them on the second gameplay screen. 
-[Gameplay Screen Design Version 1](../gameplay_screen_v1.png)
+![Gameplay Screen Design Version 1](../gameplay_screen_v1.png)
 
 I made a controller screen for the phone as well with 3 UI elements: move left button, move right button, shoot button.
-[Controller Screen Design Version 1](../controller_screen_v1.png)
+![Controller Screen Design Version 1](../controller_screen_v1.png)
 
+### Problems I ran into
 
+1. I forgot I needed to put the name of the file to open it on localhost if it's not index.html. I got help on consult and was able to solve it after I was reminded.
 
+2. My controller design needs adjustments: when the user will use it to control the spaceship, it needs to be intuitive and they should be able to do it without looking.
 
+3. I want to establish p2p local server, and i need https certificate to do it, but the code provided in the example doesn't work, gives me this error:
+
+At line:3 char:53
++   -subj '/CN=localhost' 
+-extensions EXT -config <( \
++
+                   ~
+Missing closing ')' in expression.  
+At line:3 char:49
++   -subj '/CN=localhost'
+-extensions EXT -config <( \        
++
+               ~
+The '<' operator is reserved for    
+future use.
+At line:4 char:156
++ ... S:localhost\nkeyUsage=digital 
+Signature\nextendedKeyUsage=serverA 
+uth")
++
+
+    ~
+Unexpected token ')' in expression  
+or statement.
+    + CategoryInfo          : Pars  
+   erError: (:) [], ParentContain   
+  sErrorRecordException
+    + FullyQualifiedErrorId : Miss  
+   ingEndParenthesisInExpression
+
+I figured it was because I used powershell on windows, but mac os uses git bash, so I opened git bash and ran the code there. I got this error instead:
+
+So I decided to ask chat gpt. It told me to create a config file manually because windows syntax doesn't execute the OpenSSL certificate command like it does on linux.
 
 ## Use of AI
  
 
-### First prompt
+### 1 prompt
 I used chatGPT to plan stracture of the project, plan initial steps, checkboxes and milestones to compelete.
 
 *after first consult this wasn't needed.
+### 2 prompt
+I need to solve the problem of a server certificate on windows. I will use chat gpt to adress this issue for my case. I will paste the program and the error messages then ask for possible solutions and try them one by one relaying the result to the chat.
