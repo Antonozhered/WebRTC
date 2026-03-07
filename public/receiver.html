@@ -38,7 +38,7 @@
         };
 
         const initSocket = () => {
-            socket = io.connect(`https://172.30.139.6:443`);
+            socket = io.connect(`/`);
             socket.on(`connect`, () => {
                 console.log(socket.id);
             });

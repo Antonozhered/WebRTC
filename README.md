@@ -14,7 +14,7 @@ After the consult last week, I realized it would be too difficult to realize a m
 ## Week 2 02.03-09.03
 ### Goals
 1. Design the look of the website (check)
-2. set up the connection between the sender and receiver file
+2. set up the connection between the sender and receiver file (check)
 3. set up the qr code connection with the phone
 4. write game logic and mechanics
 5. render game interface
@@ -70,6 +70,16 @@ or statement.
 I figured it was because I used powershell on windows, but mac os uses git bash, so I opened git bash and ran the code there. I got this error instead:
 
 So I decided to ask chat gpt. It told me to create a config file manually because windows syntax doesn't execute the OpenSSL certificate command like it does on linux.
+4. Ran into an error when I was setting up https server in the actual working file. The secuirity of chrome did not allow express to connect to my app. I used this line:
+app.use(express.static('public/receiver.html'));
+And ai fixed it into this line:
+app.use((req, res, next) => {
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; media-src 'self'");
+  next();
+});
+
+app.use(express.static('public'));
+more about what I learned it means in the AI overview
 
 ## Use of AI
  

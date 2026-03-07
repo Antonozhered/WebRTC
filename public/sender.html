@@ -9,17 +9,18 @@
 </head>
 
 <body>
-    <form id="msgForm" method="post" action="">
-        <input id="msgInput" type="text" name="msgInput" />
-        <button type="submit">Send Message</button>
-    </form>
-    <textarea id="messages"></textarea>
+    <h1>Controller</h1>
+    <div></div>
+        <button id="moveLeft">Move Left</button>
+        <button id="moveRight">Move Right</button>
+        <button id="shoot">Shoot</button>
+    </div>
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        {
-            const $msgForm = document.getElementById('msgForm');
-            const $msgInput = document.getElementById('msgInput');
-            const $messages = document.getElementById('messages');
+        
+            const $moveLeft = document.getElementById('moveLeft');
+            const $moveRight = document.getElementById('moveRight');
+            const $shoot = document.getElementById('shoot');
 
             let socket; // will be assigned a value later
 
@@ -28,15 +29,19 @@
                 socket.on('connect', () => {
                     console.log(`Connected: ${socket.id}`);
                 });
-                socket.on('message', message => {
-                    console.log(`Received message: ${message}`);
-                    $messages.value += `${message}\n`;
-                });
-                $msgForm.addEventListener('submit', e => handleSubmitMessage(e));
-            };
+                
 
-            init();
-        }
+                
+                $moveLeft.addEventListener('click', () => {
+                    socket.emit('move', 'left');
+                });
+                $moveRight.addEventListener('click', () => {
+                    socket.emit('move', 'right');
+                });
+                $shoot.addEventListener('click', () => {
+                    socket.emit('move', 'shoot');
+                });
+            }
     </script>
 </body>
 
