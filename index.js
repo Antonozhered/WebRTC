@@ -31,4 +31,12 @@ io.on('connection', (socket) => {
     });
 });
 
+io.on('connection', (socket) => {
+    socket.on('playerMove', (direction) => {
+        socket.broadcast.emit('playerMove', direction);
+    });
 
+    socket.on('playerShoot', () => {
+        socket.broadcast.emit('playerShoot');
+    });
+});
