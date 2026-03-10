@@ -11,7 +11,7 @@ const server = require('https').Server(options, app);
 const port = 3000
 
 app.use((req, res, next) => {
-    res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; media-src 'self'");
+    res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; media-src 'self'");
     next();
 });
 
@@ -31,4 +31,12 @@ io.on('connection', (socket) => {
     });
 });
 
+io.on('connection', (socket) => {
+    socket.on('playerMove', (direction) => {
+        socket.broadcast.emit('playerMove', direction);
+    });
 
+    socket.on('playerShoot', () => {
+        socket.broadcast.emit('playerShoot');
+    });
+});

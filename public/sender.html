@@ -4,44 +4,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Spaceship Controller</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            font-family: Arial, sans-serif;
+            color: #20154d;
+        }
 
+        h1 {
+            color: #e94560;
+            margin-bottom: 40px;
+            text-shadow: 0 0 10px #e94560;
+        }
+
+        .controller {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 10px;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 3px solid #e94560;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+        }
+
+        button {
+            font-size: 16px;
+            font-weight: bold;
+            border: 2px solid #0f3460;
+            background: #16213e;
+            color: #00d4ff;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.1s;
+            text-shadow: 0 0 5px #00d4ff;
+        }
+
+        button:hover {
+            background: #0f3460;
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px #00d4ff;
+        }
+
+        button:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 20px #00d4ff;
+        }
+
+        #moveLeft {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        #moveRight {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        #shoot {
+            grid-column: 2;
+            grid-row: 3;
+            background: #e94560;
+            color: #fff;
+            text-shadow: 0 0 5px #e94560;
+        }
+
+        #shoot:hover {
+            background: #ff6b7a;
+            border-color: #e94560;
+            box-shadow: 0 0 10px #e94560;
+        }
+
+        #shoot:active {
+            box-shadow: 0 0 20px #e94560;
+        }
+
+        .status {
+            margin-top: 30px;
+            padding: 10px 20px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 2px solid #00d4ff;
+            border-radius: 5px;
+            color: #00d4ff;
+            text-shadow: 0 0 5px #00d4ff;
+        }
+    </style>
 </head>
 
 <body>
-    <h1>Controller</h1>
-    <div></div>
-        <button id="moveLeft">Move Left</button>
-        <button id="moveRight">Move Right</button>
-        <button id="shoot">Shoot</button>
+    <h1>SPACESHIP CONTROLLER</h1>
+    <div class="controller">
+        <button id="moveLeft">← LEFT</button>
+        <button id="moveRight">RIGHT →</button>
+        <button id="shoot">SHOOT</button>
     </div>
+    <div class="status" id="status">Connecting...</div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        
-            const $moveLeft = document.getElementById('moveLeft');
-            const $moveRight = document.getElementById('moveRight');
-            const $shoot = document.getElementById('shoot');
+        const $moveLeft = document.getElementById('moveLeft');
+        const $moveRight = document.getElementById('moveRight');
+        const $shoot = document.getElementById('shoot');
+        const $status = document.getElementById('status');
 
-            let socket; // will be assigned a value later
+        let socket;
 
-            const init = () => {
-                socket = io.connect('/');
-                socket.on('connect', () => {
-                    console.log(`Connected: ${socket.id}`);
-                });
-                
+        const init = () => {
+            socket = io.connect('/');
+            socket.on('connect', () => {
+                console.log(`Connected: ${socket.id}`);
+                $status.textContent = 'Connected! Ready to play';
+                $status.style.borderColor = '#00ff00';
+                $status.style.color = '#00ff00';
+            });
 
-                
-                $moveLeft.addEventListener('click', () => {
-                    socket.emit('move', 'left');
-                });
-                $moveRight.addEventListener('click', () => {
-                    socket.emit('move', 'right');
-                });
-                $shoot.addEventListener('click', () => {
-                    socket.emit('move', 'shoot');
-                });
-            }
+            socket.on('disconnect', () => {
+                $status.textContent = 'Disconnected from server';
+                $status.style.borderColor = '#ff0000';
+                $status.style.color = '#ff0000';
+            });
+
+            $moveLeft.addEventListener('click', () => {
+                socket.emit('playerMove', 'left');
+            });
+
+            $moveRight.addEventListener('click', () => {
+                socket.emit('playerMove', 'right');
+            });
+
+            $shoot.addEventListener('click', () => {
+                socket.emit('playerShoot', true);
+            });
+
+            // Keyboard support
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowLeft') {
+                    socket.emit('playerMove', 'left');
+                    $moveLeft.style.transform = 'scale(0.95)';
+                } else if (e.key === 'ArrowRight') {
+                    socket.emit('playerMove', 'right');
+                    $moveRight.style.transform = 'scale(0.95)';
+                } else if (e.key === ' ') {
+                    e.preventDefault();
+                    socket.emit('playerShoot', true);
+                    $shoot.style.transform = 'scale(0.95)';
+                }
+            });
+
+            document.addEventListener('keyup', (e) => {
+                if (e.key === 'ArrowLeft') {
+                    $moveLeft.style.transform = 'scale(1)';
+                } else if (e.key === 'ArrowRight') {
+                    $moveRight.style.transform = 'scale(1)';
+                } else if (e.key === ' ') {
+                    $shoot.style.transform = 'scale(1)';
+                }
+            });
+        };
+
+        init();
     </script>
 </body>
 

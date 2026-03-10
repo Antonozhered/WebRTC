@@ -21,6 +21,14 @@ After the consult last week, I realized it would be too difficult to realize a m
 6. make the phone controller move the spaceship
 7. finish the MVP version of the game
 
+I have to rewrite the goals, because I realized it's too ambicious for to now.
+1. design the look (complete)
+2. set up an https server (complete)
+3. design basic example game logic (complete)
+4. set up connection between sender and receiver via socket.io (complete)
+5. set up connection between the phone and the desktop via socket.io
+6. set up the webrtc data channel 
+
 ### Design 
 First I made a player greeting screen with a space background using a figma noise texture plug in. It has an option to name the spaceship and a QR code to establish connection.
 ![Greeting Screen Design Version 1](../greeting_screen_v1.png/)
@@ -81,12 +89,22 @@ app.use((req, res, next) => {
 app.use(express.static('public'));
 more about what I learned it means in the AI overview
 
+5. When AI wrote code it missed the rebroadcast emit using socket io to all users except sender. I fixed that in index.js. I added the socket.on player move and player shoot events so it emits everything.
+
+
+## Week 3 09.03-16.03
+### Goals
+After setting up the webrtc data channel
+
+
 ## Use of AI
  
-
 ### 1 prompt
 I used chatGPT to plan stracture of the project, plan initial steps, checkboxes and milestones to compelete.
 
 *after first consult this wasn't needed.
 ### 2 prompt
 I need to solve the problem of a server certificate on windows. I will use chat gpt to adress this issue for my case. I will paste the program and the error messages then ask for possible solutions and try them one by one relaying the result to the chat.
+
+### 3 promp 
+Used ai to make the basic alien invader logic. Spaceship and contorller JS code. minor improvements on my other code.
