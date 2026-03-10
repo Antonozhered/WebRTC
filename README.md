@@ -90,3 +90,6 @@ I used chatGPT to plan stracture of the project, plan initial steps, checkboxes 
 *after first consult this wasn't needed.
 ### 2 prompt
 I need to solve the problem of a server certificate on windows. I will use chat gpt to adress this issue for my case. I will paste the program and the error messages then ask for possible solutions and try them one by one relaying the result to the chat.
+
+### 3 promp 
+Used ai to make the basic alien invader logic. Spaceship and contorller JS code. minor improvements on my other code.
