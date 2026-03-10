@@ -26,8 +26,9 @@ I have to rewrite the goals, because I realized it's too ambicious for to now.
 2. set up an https server (complete)
 3. design basic example game logic (complete)
 4. set up connection between sender and receiver via socket.io (complete)
-5. set up connection between the phone and the desktop via socket.io
-6. set up the webrtc data channel 
+5. set up connection between the phone and the desktop via socket.io (complete)
+6. set up qr code (complete)
+7. set up the webrtc data channel through simple peer 
 
 ### Design 
 First I made a player greeting screen with a space background using a figma noise texture plug in. It has an option to name the spaceship and a QR code to establish connection.
@@ -90,6 +91,11 @@ app.use(express.static('public'));
 more about what I learned it means in the AI overview
 
 5. When AI wrote code it missed the rebroadcast emit using socket io to all users except sender. I fixed that in index.js. I added the socket.on player move and player shoot events so it emits everything.
+6. when I was setting up a qr code I got a Content Secuirity Error:
+
+receiver.html:1 Loading the script 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js' violates the following Content Security Policy directive: "script-src 'self' 'unsafe-inline'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked.
+
+So I asked ai for a fix. This is what happened: I put the qrcode.min.js into a public folder and copy the script so the
 
 
 ## Week 3 09.03-16.03
@@ -99,12 +105,12 @@ After setting up the webrtc data channel
 
 ## Use of AI
  
-### 1 prompt
+### 1 use 
 I used chatGPT to plan stracture of the project, plan initial steps, checkboxes and milestones to compelete.
 
 *after first consult this wasn't needed.
-### 2 prompt
+### 2 use
 I need to solve the problem of a server certificate on windows. I will use chat gpt to adress this issue for my case. I will paste the program and the error messages then ask for possible solutions and try them one by one relaying the result to the chat.
 
-### 3 promp 
+### 3 use 
 Used ai to make the basic alien invader logic. Spaceship and contorller JS code. minor improvements on my other code.

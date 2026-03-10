@@ -51,16 +51,19 @@
 
 <body>
     <div class="status" id="status">Waiting for connection...</div>
-    
+    <div id="qr"></div>
     <div id="gameArea">
         <div id="spaceship"></div>
     </div>
 
+    <script src="js/qrcode.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const spaceship = document.getElementById('spaceship');
         const gameArea = document.getElementById('gameArea');
         const status = document.getElementById('status');
+
+      
 
         let position = 375; // starting left position (center - 25)
 
@@ -77,6 +80,14 @@
             const socket = io.connect('/');
             socket.on('connect', () => {
                 console.log(`Connected: ${socket.id}`);
+
+                const url = "https://172.30.90.30:3000/sender.html";
+
+                const qr = qrcode(0, 'L');
+                qr.addData(url);
+                qr.make();
+                document.getElementById('qr').innerHTML = qr.createSvgTag(4);
+
                 status.textContent = 'Connected! Ready for controls';
                 status.style.color = '#00ff00';
             });
@@ -96,7 +107,7 @@
             });
         };
 
-        init();
+        window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 
