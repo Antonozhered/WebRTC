@@ -11,7 +11,7 @@ const server = require('https').Server(options, app);
 const port = 3000
 
 app.use((req, res, next) => {
-    res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; media-src 'self'");
+    res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; media-src 'self'");
     next();
 });
 
@@ -24,19 +24,25 @@ server.listen(port, () => {
 const { Server } = require("socket.io");
 const io = new Server(server);
 
-io.on('connection', (socket) => {
-    console.log('a user connected');
-    socket.on('message', (msg) => {
-        io.emit('message', msg);
-    });
-});
+let peers = {}; // Track connected peers
 
 io.on('connection', (socket) => {
-    socket.on('playerMove', (direction) => {
-        socket.broadcast.emit('playerMove', direction);
+    console.log('a user connected:', socket.id);
+    peers[socket.id] = socket;
+
+    // Relay WebRTC signals between peers
+    socket.on('signal', (data) => {
+        console.log(`Signal from ${socket.id} to ${data.to}`);
+        if (peers[data.to]) {
+            peers[data.to].emit('signal', {
+                from: socket.id,
+                signal: data.signal
+            });
+        }
     });
 
-    socket.on('playerShoot', () => {
-        socket.broadcast.emit('playerShoot');
+    socket.on('disconnect', () => {
+        console.log('user disconnected:', socket.id);
+        delete peers[socket.id];
     });
 });

@@ -56,6 +56,10 @@
         <div id="spaceship"></div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"
+        integrity="sha512-0f7Ahsuvr+/P2btTY4mZIw9Vl23lS6LY/Y7amdkmUg2dqsUF+cTe4QjWvj/NIBHJoGksOiqndKQuI9yzn2hB0g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
     <script src="js/qrcode.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -63,9 +67,9 @@
         const gameArea = document.getElementById('gameArea');
         const status = document.getElementById('status');
 
-      
-
+        let peer;
         let position = 375; // starting left position (center - 25)
+        let senderId;
 
         const moveSpaceship = (direction) => {
             if (direction === 'left' && position > 0) {
@@ -80,31 +84,84 @@
             const socket = io.connect('/');
             socket.on('connect', () => {
                 console.log(`Connected: ${socket.id}`);
-
-                const url = "https://172.30.90.30:3000/sender.html";
+                
+                const url = `https://${window.location.host}/sender.html`;
 
                 const qr = qrcode(0, 'L');
                 qr.addData(url);
                 qr.make();
                 document.getElementById('qr').innerHTML = qr.createSvgTag(4);
 
-                status.textContent = 'Connected! Ready for controls';
-                status.style.color = '#00ff00';
+                status.textContent = 'Waiting for sender...';
+                status.style.color = '#ffa500';
+            });
+
+            socket.on('signal', async (data) => {
+                console.log(`Received signal from ${data.from}`);
+                if (!senderId) {
+                    senderId = data.from;
+                    status.textContent = 'Sender connected! Establishing peer connection...';
+                    status.style.color = '#ffa500';
+                    // Create peer as responder (initiator: false)
+                    answerPeerOffer(data.signal, socket);
+                } else if (peer) {
+                    // Relay subsequent signals to the peer
+                    peer.signal(data.signal);
+                }
             });
 
             socket.on('disconnect', () => {
                 status.textContent = 'Disconnected';
                 status.style.color = '#ff0000';
             });
+        };
 
-            socket.on('playerMove', (direction) => {
-                moveSpaceship(direction);
+        const answerPeerOffer = async (offer, socket) => {
+            peer = new SimplePeer({
+                initiator: false,
+                trickleIce: false
             });
 
-            socket.on('playerShoot', () => {
-                console.log('Shoot!');
-                // Add shooting logic here later
+            peer.on('signal', data => {
+                console.log('Sending answer signal');
+                socket.emit('signal', { to: senderId, signal: data });
             });
+
+            peer.on('connect', () => {
+                console.log('Peer connected!');
+                status.textContent = 'Connected! Ready for controls';
+                status.style.color = '#00ff00';
+            });
+
+            peer.on('data', (data) => {
+                try {
+                    const command = JSON.parse(data);
+                    console.log('Received command:', command);
+                    if (command.type === 'playerMove') {
+                        moveSpaceship(command.direction);
+                    } else if (command.type === 'playerShoot') {
+                        console.log('Shoot!');
+                        // Add shooting logic here later
+                    }
+                } catch (err) {
+                    console.error('Failed to parse command:', err);
+                }
+            });
+
+            peer.on('error', (err) => {
+                console.error('Peer error:', err);
+                status.textContent = 'Peer connection error';
+                status.style.color = '#ff0000';
+            });
+
+            peer.on('close', () => {
+                console.log('Peer connection closed');
+                status.textContent = 'Peer connection closed';
+                status.style.color = '#ff0000';
+            });
+
+            // Signal the offer to the peer
+            peer.signal(offer);
         };
 
         window.addEventListener('DOMContentLoaded', init);

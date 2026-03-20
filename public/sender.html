@@ -108,6 +108,10 @@
     </div>
     <div class="status" id="status">Connecting...</div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"
+        integrity="sha512-0f7Ahsuvr+/P2btTY4mZIw9Vl23lS6LY/Y7amdkmUg2dqsUF+cTe4QjWvj/NIBHJoGksOiqndKQuI9yzn2hB0g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const $moveLeft = document.getElementById('moveLeft');
@@ -116,14 +120,30 @@
         const $status = document.getElementById('status');
 
         let socket;
+        let peer;
+        let dataChannel;
+        let receiverId;
 
         const init = () => {
             socket = io.connect('/');
             socket.on('connect', () => {
                 console.log(`Connected: ${socket.id}`);
-                $status.textContent = 'Connected! Ready to play';
-                $status.style.borderColor = '#00ff00';
-                $status.style.color = '#00ff00';
+                $status.textContent = 'Searching for receiver...';
+                $status.style.borderColor = '#ffa500';
+                $status.style.color = '#ffa500';
+
+                // Initiate peer connection as sender
+                initiatePeerConnection();
+            });
+
+            socket.on('signal', async (data) => {
+                console.log(`Received signal from ${data.from}`);
+                if (!receiverId) {
+                    receiverId = data.from;
+                }
+                if (peer) {
+                    peer.signal(data.signal);
+                }
             });
 
             socket.on('disconnect', () => {
@@ -133,28 +153,28 @@
             });
 
             $moveLeft.addEventListener('click', () => {
-                socket.emit('playerMove', 'left');
+                sendCommand({ type: 'playerMove', direction: 'left' });
             });
 
             $moveRight.addEventListener('click', () => {
-                socket.emit('playerMove', 'right');
+                sendCommand({ type: 'playerMove', direction: 'right' });
             });
 
             $shoot.addEventListener('click', () => {
-                socket.emit('playerShoot', true);
+                sendCommand({ type: 'playerShoot' });
             });
 
             // Keyboard support
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'ArrowLeft') {
-                    socket.emit('playerMove', 'left');
+                    sendCommand({ type: 'playerMove', direction: 'left' });
                     $moveLeft.style.transform = 'scale(0.95)';
                 } else if (e.key === 'ArrowRight') {
-                    socket.emit('playerMove', 'right');
+                    sendCommand({ type: 'playerMove', direction: 'right' });
                     $moveRight.style.transform = 'scale(0.95)';
                 } else if (e.key === ' ') {
                     e.preventDefault();
-                    socket.emit('playerShoot', true);
+                    sendCommand({ type: 'playerShoot' });
                     $shoot.style.transform = 'scale(0.95)';
                 }
             });
@@ -168,6 +188,50 @@
                     $shoot.style.transform = 'scale(1)';
                 }
             });
+        };
+
+        const initiatePeerConnection = () => {
+            peer = new SimplePeer({
+                initiator: true,
+                trickleIce: false
+            });
+
+            peer.on('signal', data => {
+                console.log('Sending offer signal');
+                if (receiverId) {
+                    socket.emit('signal', { to: receiverId, signal: data });
+                } else {
+                    // Broadcast to any receiver
+                    socket.emit('signal', { signal: data });
+                }
+            });
+
+            peer.on('connect', () => {
+                console.log('Peer connected!');
+                $status.textContent = 'Connected! Ready to play';
+                $status.style.borderColor = '#00ff00';
+                $status.style.color = '#00ff00';
+            });
+
+            peer.on('error', (err) => {
+                console.error('Peer error:', err);
+                $status.textContent = 'Peer connection error';
+                $status.style.borderColor = '#ff0000';
+                $status.style.color = '#ff0000';
+            });
+
+            peer.on('close', () => {
+                console.log('Peer connection closed');
+                $status.textContent = 'Peer connection closed';
+                $status.style.borderColor = '#ff0000';
+                $status.style.color = '#ff0000';
+            });
+        };
+
+        const sendCommand = (command) => {
+            if (peer && peer.connected) {
+                peer.send(JSON.stringify(command));
+            }
         };
 
         init();
