@@ -96,17 +96,53 @@
             color: #00d4ff;
             text-shadow: 0 0 5px #00d4ff;
         }
+
+        .hidden {
+            display: none;
+        }
+
+        #startButton {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            background: #e94560;
+            color: #fff;
+            border: 2px solid #ff6b7a;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #startButton:hover {
+            background: #ff6b7a;
+            box-shadow: 0 0 20px #e94560;
+        }
+
+        #startButton:active {
+            transform: scale(0.95);
+        }
+
+        #startButton:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 
 <body>
     <h1>SPACESHIP CONTROLLER</h1>
-    <div class="controller">
+    <div class="hidden controller" id="controller">
         <button id="moveLeft">← LEFT</button>
         <button id="moveRight">RIGHT →</button>
         <button id="shoot">SHOOT</button>
     </div>
+    <button class="hidden" id="startButton">START GAME</button>
     <div class="status" id="status">Connecting...</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"
+        integrity="sha512-0f7Ahsuvr+/P2btTY4mZIw9Vl23lS6LY/Y7amdkmUg2dqsUF+cTe4QjWvj/NIBHJoGksOiqndKQuI9yzn2hB0g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -114,16 +150,33 @@
         const $moveRight = document.getElementById('moveRight');
         const $shoot = document.getElementById('shoot');
         const $status = document.getElementById('status');
+        const $startButton = document.getElementById('startButton');
+        const $controller = document.getElementById('controller');
 
         let socket;
+        let peer;
+        let receiverId;
+        let gameStarted = false;
 
         const init = () => {
             socket = io.connect('/');
             socket.on('connect', () => {
                 console.log(`Connected: ${socket.id}`);
-                $status.textContent = 'Connected! Ready to play';
-                $status.style.borderColor = '#00ff00';
-                $status.style.color = '#00ff00';
+                $status.textContent = 'Searching for receiver...';
+                $status.style.borderColor = '#ffa500';
+                $status.style.color = '#ffa500';
+
+                initiatePeerConnection();
+            });
+
+            socket.on('signal', async (data) => {
+                console.log(`Received signal from ${data.from}`);
+                if (!receiverId) {
+                    receiverId = data.from;
+                }
+                if (peer) {
+                    peer.signal(data.signal);
+                }
             });
 
             socket.on('disconnect', () => {
@@ -133,28 +186,27 @@
             });
 
             $moveLeft.addEventListener('click', () => {
-                socket.emit('playerMove', 'left');
+                sendCommand({ type: 'playerMove', direction: 'left' });
             });
 
             $moveRight.addEventListener('click', () => {
-                socket.emit('playerMove', 'right');
+                sendCommand({ type: 'playerMove', direction: 'right' });
             });
 
             $shoot.addEventListener('click', () => {
-                socket.emit('playerShoot', true);
+                sendCommand({ type: 'playerShoot' });
             });
 
-            // Keyboard support
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'ArrowLeft') {
-                    socket.emit('playerMove', 'left');
+                    sendCommand({ type: 'playerMove', direction: 'left' });
                     $moveLeft.style.transform = 'scale(0.95)';
                 } else if (e.key === 'ArrowRight') {
-                    socket.emit('playerMove', 'right');
+                    sendCommand({ type: 'playerMove', direction: 'right' });
                     $moveRight.style.transform = 'scale(0.95)';
                 } else if (e.key === ' ') {
                     e.preventDefault();
-                    socket.emit('playerShoot', true);
+                    sendCommand({ type: 'playerShoot' });
                     $shoot.style.transform = 'scale(0.95)';
                 }
             });
@@ -169,6 +221,58 @@
                 }
             });
         };
+
+        const initiatePeerConnection = () => {
+            peer = new SimplePeer({
+                initiator: true,
+                trickleIce: false
+            });
+
+            peer.on('signal', data => {
+                console.log('Sending offer signal');
+                if (receiverId) {
+                    socket.emit('signal', { to: receiverId, signal: data });
+                } else {
+                    socket.emit('signal', { signal: data });
+                }
+            });
+
+            peer.on('connect', () => {
+                console.log('Peer connected!');
+                $status.textContent = 'Connected! Press START to begin';
+                $status.style.borderColor = '#00ff00';
+                $status.style.color = '#00ff00';
+                $startButton.classList.remove('hidden');
+                $startButton.disabled = false;
+            });
+
+            peer.on('error', (err) => {
+                console.error('Peer error:', err);
+                $status.textContent = 'Peer connection error';
+                $status.style.borderColor = '#ff0000';
+                $status.style.color = '#ff0000';
+            });
+
+            peer.on('close', () => {
+                console.log('Peer connection closed');
+                $status.textContent = 'Peer connection closed';
+                $status.style.borderColor = '#ff0000';
+                $status.style.color = '#ff0000';
+            });
+        };
+
+        const sendCommand = (command) => {
+            if (peer && peer.connected) {
+                peer.send(JSON.stringify(command));
+            }
+        };
+
+        $startButton.addEventListener('click', () => {
+            gameStarted = true;
+            $startButton.classList.add('hidden');
+            $controller.classList.remove('hidden');
+            $status.classList.add('hidden');
+        });
 
         init();
     </script>

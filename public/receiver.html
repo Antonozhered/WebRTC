@@ -46,29 +46,75 @@
             font-size: 14px;
             z-index: 10;
         }
+
+        .hidden {
+            display: none;
+        }
+
+        #startButton {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            background: #e94560;
+            color: #fff;
+            border: 2px solid #ff6b7a;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 100;
+        }
+
+        #startButton:hover {
+            background: #ff6b7a;
+            box-shadow: 0 0 20px #e94560;
+        }
+
+        #startButton:active {
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+
+        #startButton:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 
 <body>
     <div class="status" id="status">Waiting for connection...</div>
-    
-    <div id="gameArea">
+    <div id="qr"></div>
+    <button class="hidden" id="startButton">START GAME</button>
+    <div class="hidden" id="gameArea">   
         <div id="spaceship"></div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"
+        integrity="sha512-0f7Ahsuvr+/P2btTY4mZIw9Vl23lS6LY/Y7amdkmUg2dqsUF+cTe4QjWvj/NIBHJoGksOiqndKQuI9yzn2hB0g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="js/qrcode.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const spaceship = document.getElementById('spaceship');
         const gameArea = document.getElementById('gameArea');
         const status = document.getElementById('status');
+        const startButton = document.getElementById('startButton');
+        const qrDiv = document.getElementById('qr');
 
-        let position = 375; // starting left position (center - 25)
+        let peer;
+        let position = 375;
+        let senderId;
+        let gameStarted = false;
 
         const moveSpaceship = (direction) => {
             if (direction === 'left' && position > 0) {
-                position -= 10;
-            } else if (direction === 'right' && position < 750) { // 800 - 50 = 750
-                position += 10;
+                position -= 15;
+            } else if (direction === 'right' && position < 750) {
+                position += 15;
             }
             spaceship.style.left = position + 'px';
         };
@@ -77,27 +123,95 @@
             const socket = io.connect('/');
             socket.on('connect', () => {
                 console.log(`Connected: ${socket.id}`);
-                status.textContent = 'Connected! Ready for controls';
-                status.style.color = '#00ff00';
+
+                const url = `https://${window.location.host}/sender.html`;
+
+                const qr = qrcode(0, 'L');
+                qr.addData(url);
+                qr.make();
+                document.getElementById('qr').innerHTML = qr.createSvgTag(4);
+
+                status.textContent = 'Waiting for sender...';
+                status.style.color = '#ffa500';
+            });
+
+            socket.on('signal', async (data) => {
+                console.log(`Received signal from ${data.from}`);
+                if (!senderId) {
+                    senderId = data.from;
+                    status.textContent = 'Sender connected! Establishing peer connection...';
+                    status.style.color = '#ffa500';
+                    answerPeerOffer(data.signal, socket);
+                } else if (peer) {
+                    peer.signal(data.signal);
+                }
             });
 
             socket.on('disconnect', () => {
                 status.textContent = 'Disconnected';
                 status.style.color = '#ff0000';
             });
-
-            socket.on('playerMove', (direction) => {
-                moveSpaceship(direction);
-            });
-
-            socket.on('playerShoot', () => {
-                console.log('Shoot!');
-                // Add shooting logic here later
-            });
         };
 
-        init();
+        const answerPeerOffer = async (offer, socket) => {
+            peer = new SimplePeer({
+                initiator: false,
+                trickleIce: false
+            });
+
+            peer.on('signal', data => {
+                console.log('Sending answer signal');
+                socket.emit('signal', { to: senderId, signal: data });
+            });
+
+            peer.on('connect', () => {
+                console.log('Peer connected!');
+                status.textContent = 'Connected! Press START to begin';
+                status.style.color = '#00ff00';
+                startButton.classList.remove('hidden');
+                startButton.disabled = false;
+            });
+
+            peer.on('data', (data) => {
+                try {
+                    const command = JSON.parse(data);
+                    console.log('Received command:', command);
+                    if (command.type === 'playerMove') {
+                        moveSpaceship(command.direction);
+                    } else if (command.type === 'playerShoot') {
+                        console.log('Shoot!');
+                    }
+                } catch (err) {
+                    console.error('Failed to parse command:', err);
+                }
+            });
+
+            peer.on('error', (err) => {
+                console.error('Peer error:', err);
+                status.textContent = 'Peer connection error';
+                status.style.color = '#ff0000';
+            });
+
+            peer.on('close', () => {
+                console.log('Peer connection closed');
+                status.textContent = 'Peer connection closed';
+                status.style.color = '#ff0000';
+            });
+
+            peer.signal(offer);
+        };
+
+        startButton.addEventListener('click', () => {
+            gameStarted = true;
+            qrDiv.classList.add('hidden');
+            startButton.classList.add('hidden');
+            gameArea.classList.remove('hidden');
+            status.classList.add('hidden');
+        });
+
+        window.addEventListener('DOMContentLoaded', init);
     </script>
+
 </body>
 
 </html>

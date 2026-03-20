@@ -26,8 +26,9 @@ I have to rewrite the goals, because I realized it's too ambicious for to now.
 2. set up an https server (complete)
 3. design basic example game logic (complete)
 4. set up connection between sender and receiver via socket.io (complete)
-5. set up connection between the phone and the desktop via socket.io
-6. set up the webrtc data channel 
+5. set up connection between the phone and the desktop via socket.io (complete)
+6. set up qr code (complete)
+7. set up the webrtc data channel through simple peer 
 
 ### Design 
 First I made a player greeting screen with a space background using a figma noise texture plug in. It has an option to name the spaceship and a QR code to establish connection.
@@ -90,21 +91,60 @@ app.use(express.static('public'));
 more about what I learned it means in the AI overview
 
 5. When AI wrote code it missed the rebroadcast emit using socket io to all users except sender. I fixed that in index.js. I added the socket.on player move and player shoot events so it emits everything.
+6. when I was setting up a qr code I got a Content Secuirity Error:
+
+receiver.html:1 Loading the script 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js' violates the following Content Security Policy directive: "script-src 'self' 'unsafe-inline'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked.
+
+So I asked ai for a fix. This is what happened: I put the qrcode.min.js into a public folder and copy the script so the
 
 
 ## Week 3 09.03-16.03
 ### Goals
-After setting up the webrtc data channel
+After setting up the webrtc data channel I want to: 
+1. Finish the set up
+2. make a continuous evnent journey: 
+intro screen -> game start screen -> gameplay -> game end -> score / new game 
+### Problems I ran into
+1. I tried to follow instructions to set up the webrtc data channel, I added a few peices of code from the github file, but my website stopped loading correctly.
 
-
+## Week 4 16.03-22.03
+### Goals
+1. Finish gameplay logic
+2. Add gyroscope control 
+3. Add finishing touches and submit
 ## Use of AI
  
-### 1 prompt
+### 1 use 
 I used chatGPT to plan stracture of the project, plan initial steps, checkboxes and milestones to compelete.
 
 *after first consult this wasn't needed.
-### 2 prompt
+### 2 use
 I need to solve the problem of a server certificate on windows. I will use chat gpt to adress this issue for my case. I will paste the program and the error messages then ask for possible solutions and try them one by one relaying the result to the chat.
 
-### 3 promp 
+### 3 use 
 Used ai to make the basic alien invader logic. Spaceship and contorller JS code. minor improvements on my other code.
+
+### 4 use
+Midway through implementing web rtc:
+
+Issues preventing WebRTC from working:
+
+Receiver doesn't initialize the peer
+
+Listens for signal events but calls peer.signal() on an undefined peer
+The answerPeerOffer() function is defined but never called
+Sender never initiates the peer
+
+The callPeer() function exists but is never called anywhere
+References an undefined myStream variable
+Server doesn't relay WebRTC signals
+
+No signal event handler in your server, so even if they tried to emit signals, they wouldn't reach the other peer
+Current flow: Only playerMove and playerShoot are sent via Socket.io directly.
+
+To actually use WebRTC for peer-to-peer communication, you need:
+
+Sender initiates peer with initiator: true and generates an offer
+Server relays the signal between sender and receiver
+Receiver receives the offer and creates a peer with initiator: false to answer
+Complete the SDP handshake
