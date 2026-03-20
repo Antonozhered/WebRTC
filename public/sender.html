@@ -96,16 +96,48 @@
             color: #00d4ff;
             text-shadow: 0 0 5px #00d4ff;
         }
+
+        .hidden {
+            display: none;
+        }
+
+        #startButton {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            background: #e94560;
+            color: #fff;
+            border: 2px solid #ff6b7a;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #startButton:hover {
+            background: #ff6b7a;
+            box-shadow: 0 0 20px #e94560;
+        }
+
+        #startButton:active {
+            transform: scale(0.95);
+        }
+
+        #startButton:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 
 <body>
     <h1>SPACESHIP CONTROLLER</h1>
-    <div class="controller">
+    <div class="hidden controller" id="controller">
         <button id="moveLeft">← LEFT</button>
         <button id="moveRight">RIGHT →</button>
         <button id="shoot">SHOOT</button>
     </div>
+    <button class="hidden" id="startButton">START GAME</button>
     <div class="status" id="status">Connecting...</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"
@@ -118,11 +150,13 @@
         const $moveRight = document.getElementById('moveRight');
         const $shoot = document.getElementById('shoot');
         const $status = document.getElementById('status');
+        const $startButton = document.getElementById('startButton');
+        const $controller = document.getElementById('controller');
 
         let socket;
         let peer;
-        let dataChannel;
         let receiverId;
+        let gameStarted = false;
 
         const init = () => {
             socket = io.connect('/');
@@ -132,7 +166,6 @@
                 $status.style.borderColor = '#ffa500';
                 $status.style.color = '#ffa500';
 
-                // Initiate peer connection as sender
                 initiatePeerConnection();
             });
 
@@ -164,7 +197,6 @@
                 sendCommand({ type: 'playerShoot' });
             });
 
-            // Keyboard support
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'ArrowLeft') {
                     sendCommand({ type: 'playerMove', direction: 'left' });
@@ -201,16 +233,17 @@
                 if (receiverId) {
                     socket.emit('signal', { to: receiverId, signal: data });
                 } else {
-                    // Broadcast to any receiver
                     socket.emit('signal', { signal: data });
                 }
             });
 
             peer.on('connect', () => {
                 console.log('Peer connected!');
-                $status.textContent = 'Connected! Ready to play';
+                $status.textContent = 'Connected! Press START to begin';
                 $status.style.borderColor = '#00ff00';
                 $status.style.color = '#00ff00';
+                $startButton.classList.remove('hidden');
+                $startButton.disabled = false;
             });
 
             peer.on('error', (err) => {
@@ -233,6 +266,13 @@
                 peer.send(JSON.stringify(command));
             }
         };
+
+        $startButton.addEventListener('click', () => {
+            gameStarted = true;
+            $startButton.classList.add('hidden');
+            $controller.classList.remove('hidden');
+            $status.classList.add('hidden');
+        });
 
         init();
     </script>

@@ -32,12 +32,26 @@ io.on('connection', (socket) => {
 
     // Relay WebRTC signals between peers
     socket.on('signal', (data) => {
-        console.log(`Signal from ${socket.id} to ${data.to}`);
-        if (peers[data.to]) {
-            peers[data.to].emit('signal', {
-                from: socket.id,
-                signal: data.signal
-            });
+        if (data.to) {
+            // Direct signal to specific peer
+            console.log(`Signal from ${socket.id} to ${data.to}`);
+            if (peers[data.to]) {
+                peers[data.to].emit('signal', {
+                    from: socket.id,
+                    signal: data.signal
+                });
+            }
+        } else {
+            // Broadcast initial offer to all other peers
+            console.log(`Broadcasting signal from ${socket.id}`);
+            for (let peerId in peers) {
+                if (peerId !== socket.id) {
+                    peers[peerId].emit('signal', {
+                        from: socket.id,
+                        signal: data.signal
+                    });
+                }
+            }
         }
     });
 

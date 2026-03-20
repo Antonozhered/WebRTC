@@ -100,10 +100,18 @@ So I asked ai for a fix. This is what happened: I put the qrcode.min.js into a p
 
 ## Week 3 09.03-16.03
 ### Goals
-After setting up the webrtc data channel
+After setting up the webrtc data channel I want to: 
+1. Finish the set up
+2. make a continuous evnent journey: 
+intro screen -> game start screen -> gameplay -> game end -> score / new game 
 ### Problems I ran into
 1. I tried to follow instructions to set up the webrtc data channel, I added a few peices of code from the github file, but my website stopped loading correctly.
 
+## Week 4 16.03-22.03
+### Goals
+1. Finish gameplay logic
+2. Add gyroscope control 
+3. Add finishing touches and submit
 ## Use of AI
  
 ### 1 use 

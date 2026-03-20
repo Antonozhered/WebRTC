@@ -46,13 +46,49 @@
             font-size: 14px;
             z-index: 10;
         }
+
+        .hidden {
+            display: none;
+        }
+
+        #startButton {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            background: #e94560;
+            color: #fff;
+            border: 2px solid #ff6b7a;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 100;
+        }
+
+        #startButton:hover {
+            background: #ff6b7a;
+            box-shadow: 0 0 20px #e94560;
+        }
+
+        #startButton:active {
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+
+        #startButton:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 
 <body>
     <div class="status" id="status">Waiting for connection...</div>
     <div id="qr"></div>
-    <div id="gameArea">
+    <button class="hidden" id="startButton">START GAME</button>
+    <div class="hidden" id="gameArea">
         <div id="spaceship"></div>
     </div>
 
@@ -66,16 +102,19 @@
         const spaceship = document.getElementById('spaceship');
         const gameArea = document.getElementById('gameArea');
         const status = document.getElementById('status');
+        const startButton = document.getElementById('startButton');
+        const qrDiv = document.getElementById('qr');
 
         let peer;
-        let position = 375; // starting left position (center - 25)
+        let position = 375;
         let senderId;
+        let gameStarted = false;
 
         const moveSpaceship = (direction) => {
             if (direction === 'left' && position > 0) {
-                position -= 10;
-            } else if (direction === 'right' && position < 750) { // 800 - 50 = 750
-                position += 10;
+                position -= 15;
+            } else if (direction === 'right' && position < 750) {
+                position += 15;
             }
             spaceship.style.left = position + 'px';
         };
@@ -84,7 +123,7 @@
             const socket = io.connect('/');
             socket.on('connect', () => {
                 console.log(`Connected: ${socket.id}`);
-                
+
                 const url = `https://${window.location.host}/sender.html`;
 
                 const qr = qrcode(0, 'L');
@@ -102,10 +141,8 @@
                     senderId = data.from;
                     status.textContent = 'Sender connected! Establishing peer connection...';
                     status.style.color = '#ffa500';
-                    // Create peer as responder (initiator: false)
                     answerPeerOffer(data.signal, socket);
                 } else if (peer) {
-                    // Relay subsequent signals to the peer
                     peer.signal(data.signal);
                 }
             });
@@ -129,8 +166,10 @@
 
             peer.on('connect', () => {
                 console.log('Peer connected!');
-                status.textContent = 'Connected! Ready for controls';
+                status.textContent = 'Connected! Press START to begin';
                 status.style.color = '#00ff00';
+                startButton.classList.remove('hidden');
+                startButton.disabled = false;
             });
 
             peer.on('data', (data) => {
@@ -141,7 +180,6 @@
                         moveSpaceship(command.direction);
                     } else if (command.type === 'playerShoot') {
                         console.log('Shoot!');
-                        // Add shooting logic here later
                     }
                 } catch (err) {
                     console.error('Failed to parse command:', err);
@@ -160,12 +198,20 @@
                 status.style.color = '#ff0000';
             });
 
-            // Signal the offer to the peer
             peer.signal(offer);
         };
 
+        startButton.addEventListener('click', () => {
+            gameStarted = true;
+            qrDiv.classList.add('hidden');
+            startButton.classList.add('hidden');
+            gameArea.classList.remove('hidden');
+            status.classList.add('hidden');
+        });
+
         window.addEventListener('DOMContentLoaded', init);
     </script>
+
 </body>
 
 </html>
