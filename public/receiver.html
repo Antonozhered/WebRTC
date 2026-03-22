@@ -5,141 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spaceship Game</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: #000;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
 
-        #gameArea {
-            position: relative;
-            width: 800px;
-            height: 600px;
-            border: 2px solid #00ff00;
-            background-image: url('./assets/gameArea_background.png');
-            background-size: cover;
-        }
-
-        #spaceship {
-            position: absolute;
-            bottom: 30px;
-            left: 375px;
-            /* center - 25px for 50px width */
-            width: 90px;
-            height: 100px;
-            transition: left 0.1s ease;
-        }
-
-        .status {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: #00ff00;
-            font-family: monospace;
-            font-size: 14px;
-            z-index: 10;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        #startButton {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 20px 40px;
-            font-size: 24px;
-            font-weight: bold;
-            background: #e94560;
-            color: #fff;
-            border: 2px solid #ff6b7a;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-            z-index: 100;
-        }
-
-        #startButton:hover {
-            background: #ff6b7a;
-            box-shadow: 0 0 20px #e94560;
-        }
-
-        #startButton:active {
-            transform: translate(-50%, -50%) scale(0.95);
-        }
-
-        #startButton:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        #endScreen {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            color: #00ff00;
-            padding: 40px;
-            border: 2px solid #00ff00;
-            border-radius: 10px;
-            text-align: center;
-            z-index: 200;
-            font-family: monospace;
-        }
-
-        #cameraBox {
-            position: relative;
-            margin: 10px auto;
-            width: 120px;
-            height: 120px;
-            border: 2px solid #00ff00;
-            border-radius: 8px;
-            overflow: hidden;
-            background: #000;
-        }
-
-        #playerCamera {
-            width: 120px;
-            height: 120px;
-            object-fit: cover;
-        }
-
-        #endScreen h2 {
-            margin: 0 0 20px 0;
-            font-size: 36px;
-        }
-
-        #endScreen p {
-            margin: 10px 0;
-            font-size: 18px;
-        }
-
-        #playAgain {
-            margin-top: 20px;
-            padding: 15px 30px;
-            font-size: 18px;
-            background: #e94560;
-            color: #fff;
-            border: 2px solid #ff6b7a;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        #playAgain:hover {
-            background: #ff6b7a;
-            box-shadow: 0 0 20px #e94560;
-        }
-    </style>
+    <link rel="stylesheet" href="./style/receiver.css">
 </head>
 
 <body>
@@ -606,7 +473,6 @@
         </div>
         <p id="finalScore"></p>
         <p id="finalWave"></p>
-        <button id="playAgain">PLAY AGAIN</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"
@@ -625,7 +491,6 @@
         const playerCamera = document.getElementById('playerCamera');
         const finalScore = document.getElementById('finalScore');
         const finalWave = document.getElementById('finalWave');
-        const playAgainButton = document.getElementById('playAgain');
 
         let peer;
         let senderId;
@@ -638,7 +503,10 @@
             width: 90,
             height: 70,
             alive: true,
-            cooldown: 0
+            cooldown: 0,
+            shieldActive: false,
+            shieldCooldown: 0,
+            gyroGamma: 0
         };
 
         let aliens = [];
@@ -703,7 +571,7 @@
 
         // Player bullet functions
         const shootPlayerBullet = () => {
-            if (!spaceshipState.alive || gameOver || spaceshipState.cooldown > 0) return;
+            if (!spaceshipState.alive || gameOver || spaceshipState.cooldown > 0 || spaceshipState.shieldActive) return;
 
             playerBullets.push({
                 x: spaceshipState.x + (spaceshipState.width / 2),
@@ -877,7 +745,9 @@
             alienBullets.forEach(bullet => {
                 if (bullet.active && isColliding(bullet, shipCollider)) {
                     bullet.active = false;
-                    killSpaceship();
+                    if (!spaceshipState.shieldActive) {
+                        killSpaceship();
+                    }
                 }
             });
 
@@ -911,6 +781,12 @@
 
             // Update state
             spaceshipState.cooldown = Math.max(0, spaceshipState.cooldown - 1);
+            if (spaceshipState.shieldCooldown > 0) {
+                spaceshipState.shieldCooldown = Math.max(0, spaceshipState.shieldCooldown - 1);
+            }
+            // Update spaceship x from gyroscope
+            spaceshipState.x = Math.max(0, Math.min(750, 375 + (spaceshipState.gyroGamma / 90) * 375));
+
             updateAliens();
             updatePlayerBullets();
             updateAlienBullets();
@@ -926,6 +802,13 @@
 
         const renderSpaceship = () => {
             spaceship.style.left = spaceshipState.x + 'px';
+            if (spaceshipState.shieldActive) {
+                spaceship.style.boxShadow = '0 0 25px 10px rgba(0, 255, 0, 0.8), inset 0 0 15px rgba(0,255,0,0.8)';
+                spaceship.style.borderRadius = '70%';
+            } else {
+                spaceship.style.boxShadow = '';
+                spaceship.style.borderRadius = '';
+            }
         };
 
         const renderGame = () => {
@@ -1006,6 +889,11 @@
             finalScore.textContent = `Final Score: ${score}`;
             finalWave.textContent = `Wave Reached: ${wave}`;
 
+            // Send game over to sender
+            if (peer && peer.connected) {
+                peer.send(JSON.stringify({ type: 'gameOver' }));
+            }
+
             // Try to use sender's camera stream from peer connection
             if (peer && peer.streams && peer.streams.length > 0) {
                 console.log('Using sender camera stream for end screen');
@@ -1022,10 +910,13 @@
             spaceshipState = {
                 x: 375,
                 y: 540,
-                width: 50,
-                height: 30,
+                width: 90,
+                height: 70,
                 alive: true,
-                cooldown: 0
+                cooldown: 0,
+                shieldActive: false,
+                shieldCooldown: 0,
+                gyroGamma: 0
             };
             aliens = [];
             playerBullets = [];
@@ -1128,10 +1019,17 @@
                 try {
                     const command = JSON.parse(data);
                     console.log('Received command:', command);
-                    if (command.type === 'playerMove') {
-                        moveSpaceship(command.direction);
+                    if (command.type === 'gyroscope') {
+                        spaceshipState.gyroGamma = command.gamma;
                     } else if (command.type === 'playerShoot') {
                         shootPlayerBullet();
+                    } else if (command.type === 'playerShield') {
+                        spaceshipState.shieldActive = command.active;
+                        if (!command.active) {
+                            spaceshipState.shieldCooldown = 12; // cooldown after release
+                        }
+                    } else if (command.type === 'resetGame') {
+                        resetGame();
                     }
                 } catch (err) {
                     console.error('Failed to parse command:', err);
@@ -1203,10 +1101,6 @@
             initializeAliens();
             renderAliens();
             gameLoop();
-        });
-
-        playAgainButton.addEventListener('click', () => {
-            resetGame();
         });
 
         window.addEventListener('DOMContentLoaded', init);

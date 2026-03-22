@@ -119,6 +119,10 @@ intro screen -> game start screen -> gameplay -> game end -> score / new game
 -score + play again
 2. Add gyroscope control 
 3. Add finishing touches and submit
+
+
+4. While I was working I relized I want to add a shield functin. Used ai for this as well.
+5. I added a camera at the end screen to practice different webrtc channels
 ## Use of AI
  
 ### 1 use 
@@ -158,6 +162,315 @@ Complete the SDP handshake
 
 ### use 5
 game logic
+I described how I want the game to look, and asked to design the logic in simple steps.
+
+1. shoot mechanics. 2. alien attack mechanics. 3. spaceship death mechanics. 4. kill alien mechanics. 5. approaching aliens (move left to right, then down, then right to left, then down, repeat). 6. If alien touches spaceship death mehcanic. 7. If all aliens die - respawn. 8. end screen + score + play again.
+
+It gave me development concepts and code snippets:
+Core structure
+
+Use these game state variables:
+
+let spaceship = {
+  x: 375,
+  y: 540,
+  width: 50,
+  height: 30,
+  alive: true,
+  cooldown: 0
+};
+
+let aliens = [];
+let playerBullets = [];
+let alienBullets = [];
+
+let score = 0;
+let wave = 1;
+let gameOver = false;
+
+That gives you one place for all logic.
+
+1. Shoot mechanics
+Idea
+
+When player presses shoot:
+
+create a bullet object
+push it into playerBullets
+move bullets upward every frame
+remove bullets when off screen
+Data shape
+{
+  x: spaceship.x + 22,
+  y: spaceship.y,
+  width: 6,
+  height: 14,
+  speed: 8,
+  active: true
+}
+Functions
+shootPlayerBullet()
+updatePlayerBullets()
+renderPlayerBullets()
+Important
+
+Add a cooldown so holding shoot does not spam 100 bullets.
+
+Example:
+
+if (spaceship.cooldown <= 0) {
+  shootPlayerBullet();
+  spaceship.cooldown = 15;
+}
+
+Then reduce cooldown every frame.
+
+2. Alien attack mechanics
+Idea
+
+Aliens should randomly shoot downward.
+
+Do not let every alien shoot.
+Only allow bottom-most alive alien in each column to shoot. That feels correct like Space Invaders.
+
+Data shape
+
+Alien bullet:
+
+{
+  x: alien.x + 25,
+  y: alien.y + 55,
+  width: 6,
+  height: 14,
+  speed: 5,
+  active: true
+}
+Functions
+getBottomAliens()
+alienShoot()
+updateAlienBullets()
+renderAlienBullets()
+Logic
+
+Every few frames:
+
+get bottom aliens
+randomly choose one
+create one bullet
+3. Spaceship death mechanics
+Idea
+
+Spaceship dies if:
+
+hit by alien bullet
+touched by alien
+aliens reach bottom line
+Simple version
+
+When dead:
+
+set spaceship.alive = false
+set gameOver = true
+stop updates
+show end screen
+
+Optional:
+
+short explosion effect
+flash red
+delay before end screen
+Function
+killSpaceship()
+4. Kill alien mechanics
+Idea
+
+Check collision between each player bullet and each alive alien.
+
+If collision:
+
+set alien alive = false
+set bullet active = false
+add score
+remove alien visually on rerender
+Best data design
+
+Each alien already has:
+
+alive: true
+
+Perfect. Use that.
+
+Function
+checkPlayerBulletAlienCollisions()
+Score idea
+
+Different rows = different score:
+
+top red = 30
+middle green = 20
+bottom blue = 10
+5. Approaching aliens movement
+Idea
+
+Treat the whole alien formation as one moving block.
+
+Do not move each alien independently with separate logic.
+Instead:
+
+all aliens shift horizontally together
+when edge is reached:
+reverse direction
+move all aliens downward
+Variables
+let alienDirection = 1;
+let alienSpeed = 1;
+let dropDistance = 20;
+Logic
+
+Each update:
+
+move all alive aliens by alienSpeed * alienDirection
+detect if leftmost or rightmost alien touches edge
+if yes:
+alienDirection *= -1
+move all aliens down by dropDistance
+Function
+updateAliens()
+
+That gives you:
+left → right → down → right → left → down
+
+exactly what you want.
+
+6. If alien touches spaceship death mechanic
+Idea
+
+Check collision between spaceship rectangle and every alive alien rectangle.
+
+Also add a simpler fail rule:
+if any alien’s bottom reaches the spaceship row, kill player.
+
+Function
+checkAlienSpaceshipCollision()
+Two checks
+real rectangle overlap
+alien reached too low
+
+The second one is easier and enough for MVP.
+
+7. If all aliens die — respawn
+Idea
+
+When all alive === false:
+
+increase wave
+maybe increase speed slightly
+recreate aliens
+keep player alive and continue
+Function
+startNextWave()
+Example
+if (aliens.every(alien => !alien.alive)) {
+  wave++;
+  alienSpeed += 0.2;
+  initializeAliens();
+}
+
+Good extra polish for grading.
+
+8. End screen + score + play again
+Idea
+
+When gameOver = true:
+
+show overlay
+display score
+display wave reached
+show restart button
+HTML
+
+Add overlay:
+
+<div id="endScreen" class="hidden">
+  <h2>GAME OVER</h2>
+  <p id="finalScore"></p>
+  <button id="playAgain">PLAY AGAIN</button>
+</div>
+Restart logic
+
+Make a resetGame() function:
+
+reset score
+reset wave
+reset bullets
+reset aliens
+reset spaceship
+hide end screen
+show game
+Best development order
+
+Do it in this order:
+
+Phase 1
+player bullets
+bullet render
+bullet movement
+Phase 2
+bullet vs alien collision
+kill alien
+score
+Phase 3
+alien formation movement
+edge detect
+move down
+Phase 4
+alien bullets
+bullet vs spaceship
+death
+Phase 5
+next wave
+end screen
+restart
+
+That is the safest order.
+
+Very important coding rule
+
+Split every frame into 3 parts:
+
+1. update state
+updateSpaceship();
+updateAliens();
+updatePlayerBullets();
+updateAlienBullets();
+checkCollisions();
+2. clean state
+
+remove inactive bullets
+
+3. render state
+renderSpaceship();
+renderAliens();
+renderBullets();
+
+This will keep your code readable.
+
+Recommended collision helper
+
+Use one rectangle collision function:
+
+const isColliding = (a, b) => {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
+};
+
+Then reuse it everywhere.
+
+I then used this output to code using the VScode ai agent.
 
 ### use 6
 fixing bugs:
@@ -195,3 +508,7 @@ alien vs ship direct collision
 
 ### use 8 
 adding a camera feature.
+ran into a problem where at first it only added the video channel for the receiver and not the sender.
+
+### use 9 
+adding gyroscope controls
