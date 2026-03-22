@@ -81,6 +81,48 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+
+        #endScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            padding: 40px;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 200;
+            font-family: monospace;
+        }
+
+        #endScreen h2 {
+            margin: 0 0 20px 0;
+            font-size: 36px;
+        }
+
+        #endScreen p {
+            margin: 10px 0;
+            font-size: 18px;
+        }
+
+        #playAgain {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #e94560;
+            color: #fff;
+            border: 2px solid #ff6b7a;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #playAgain:hover {
+            background: #ff6b7a;
+            box-shadow: 0 0 20px #e94560;
+        }
     </style>
 </head>
 
@@ -88,8 +130,16 @@
     <div class="status" id="status">Waiting for connection...</div>
     <div id="qr"></div>
     <button class="hidden" id="startButton">START GAME</button>
-    <div class="hidden" id="gameArea">   
+    <div class="hidden" id="gameArea">
+        <div id="alien__container"></div>
         <div id="spaceship"></div>
+        <div id="bullet__container"></div>
+    </div>
+    <div id="endScreen" class="hidden">
+        <h2>GAME OVER</h2>
+        <p id="finalScore"></p>
+        <p id="finalWave"></p>
+        <button id="playAgain">PLAY AGAIN</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"
@@ -104,19 +154,370 @@
         const status = document.getElementById('status');
         const startButton = document.getElementById('startButton');
         const qrDiv = document.getElementById('qr');
+        const endScreen = document.getElementById('endScreen');
+        const finalScore = document.getElementById('finalScore');
+        const finalWave = document.getElementById('finalWave');
+        const playAgainButton = document.getElementById('playAgain');
 
         let peer;
-        let position = 375;
         let senderId;
         let gameStarted = false;
 
-        const moveSpaceship = (direction) => {
-            if (direction === 'left' && position > 0) {
-                position -= 15;
-            } else if (direction === 'right' && position < 750) {
-                position += 15;
+        // Game state
+        let spaceshipState = {
+            x: 375,
+            y: 540,
+            width: 50,
+            height: 30,
+            alive: true,
+            cooldown: 0
+        };
+
+        let aliens = [];
+        let playerBullets = [];
+        let alienBullets = [];
+
+        let score = 0;
+        let wave = 1;
+        let gameOver = false;
+
+        let alienDirection = 1;
+        let alienSpeed = 1;
+        let dropDistance = 20;
+
+        // Alien configurations: red (top, fastest), green (middle), blue (bottom, slowest)
+        const alienConfigs = [
+            { color: '#EE1B1B', shootRate: 0.8, row: 0 },  // Red: fastest
+            { color: '#1BEE29', shootRate: 0.5, row: 1 },  // Green: moderate
+            { color: '#008CFF', shootRate: 0.3, row: 2 }   // Blue: slowest
+        ];
+
+        const ALIEN_WIDTH = 60;
+        const ALIEN_HEIGHT = 55;
+        const ALIEN_SPACING = 60 + 32; // 60 width + 32 spacing
+        const ROW_SPACING = 55 + 16; // 55 height + 16 spacing
+        const ALIEN_START_X = 50;
+        const ALIEN_START_Y = 50;
+
+        // Initialize aliens with properties
+        function initializeAliens() {
+            aliens = [];
+            let alienId = 0;
+
+            alienConfigs.forEach((config) => {
+                for (let i = 0; i < 7; i++) {
+                    aliens.push({
+                        id: alienId++,
+                        x: ALIEN_START_X + (i * ALIEN_SPACING),
+                        y: ALIEN_START_Y + (config.row * ROW_SPACING),
+                        width: ALIEN_WIDTH,
+                        height: ALIEN_HEIGHT,
+                        color: config.color,
+                        row: config.row,
+                        shootRate: config.shootRate,  // 0.8 (red), 0.5 (green), 0.3 (blue)
+                        alive: true
+                    });
+                }
+            });
+
+            console.log(`Initialized ${aliens.length} aliens`);
+        }
+
+        // Collision helper
+        const isColliding = (a, b) => {
+            return (
+                a.x < b.x + b.width &&
+                a.x + a.width > b.x &&
+                a.y < b.y + b.height &&
+                a.y + a.height > b.y
+            );
+        };
+
+        // Player bullet functions
+        const shootPlayerBullet = () => {
+            if (!spaceshipState.alive || gameOver || spaceshipState.cooldown > 0) return;
+
+            playerBullets.push({
+                x: spaceshipState.x + 22,
+                y: spaceshipState.y,
+                width: 6,
+                height: 14,
+                speed: 8,
+                active: true
+            });
+            spaceshipState.cooldown = 15;
+        };
+
+        const updatePlayerBullets = () => {
+            playerBullets.forEach(bullet => {
+                if (bullet.active) {
+                    bullet.y -= bullet.speed;
+                    if (bullet.y < -bullet.height) {
+                        bullet.active = false;
+                    }
+                }
+            });
+        };
+
+        const renderPlayerBullets = () => {
+            const container = document.getElementById('bullet__container');
+
+            playerBullets.forEach(bullet => {
+                if (bullet.active) {
+                    const bulletDiv = document.createElement('div');
+                    bulletDiv.className = 'bullet player-bullet';
+                    bulletDiv.style.position = 'absolute';
+                    bulletDiv.style.left = `${bullet.x}px`;
+                    bulletDiv.style.top = `${bullet.y}px`;
+                    bulletDiv.style.width = `${bullet.width}px`;
+                    bulletDiv.style.height = `${bullet.height}px`;
+                    bulletDiv.style.background = '#00ff00';
+                    container.appendChild(bulletDiv);
+                }
+            });
+        };
+
+        // Alien functions
+        const updateAliens = () => {
+            if (!aliens.length) return;
+
+            // Move all aliens horizontally
+            const aliveAliens = aliens.filter(alien => alien.alive);
+            aliveAliens.forEach(alien => {
+                alien.x += alienSpeed * alienDirection;
+            });
+
+            // Check for edge collision
+            const leftmost = Math.min(...aliveAliens.map(alien => alien.x));
+            const rightmost = Math.max(...aliveAliens.map(alien => alien.x + alien.width));
+
+            if ((alienDirection === 1 && rightmost >= 800) || (alienDirection === -1 && leftmost <= 0)) {
+                alienDirection *= -1;
+                aliveAliens.forEach(alien => {
+                    alien.y += dropDistance;
+                });
             }
-            spaceship.style.left = position + 'px';
+        };
+
+        // Alien shooting functions
+        const getBottomAliens = () => {
+            const bottomAliens = [];
+            for (let col = 0; col < 7; col++) {
+                const columnAliens = aliens.filter(alien =>
+                    alien.alive && Math.floor((alien.x - ALIEN_START_X) / ALIEN_SPACING) === col
+                );
+                if (columnAliens.length > 0) {
+                    const bottomAlien = columnAliens.reduce((bottom, current) =>
+                        current.y > bottom.y ? current : bottom
+                    );
+                    bottomAliens.push(bottomAlien);
+                }
+            }
+            return bottomAliens;
+        };
+
+        const alienShoot = () => {
+            if (Math.random() < 0.02) { // 2% chance per frame
+                const bottomAliens = getBottomAliens();
+                if (bottomAliens.length > 0) {
+                    const shooter = bottomAliens[Math.floor(Math.random() * bottomAliens.length)];
+                    alienBullets.push({
+                        x: shooter.x + 25,
+                        y: shooter.y + 55,
+                        width: 6,
+                        height: 14,
+                        speed: 5,
+                        active: true
+                    });
+                }
+            }
+        };
+
+        const updateAlienBullets = () => {
+            alienBullets.forEach(bullet => {
+                if (bullet.active) {
+                    bullet.y += bullet.speed;
+                    if (bullet.y > 600) {
+                        bullet.active = false;
+                    }
+                }
+            });
+        };
+
+        const renderAlienBullets = () => {
+            const container = document.getElementById('bullet__container');
+
+            alienBullets.forEach(bullet => {
+                if (bullet.active) {
+                    const bulletDiv = document.createElement('div');
+                    bulletDiv.className = 'bullet alien-bullet';
+                    bulletDiv.style.position = 'absolute';
+                    bulletDiv.style.left = `${bullet.x}px`;
+                    bulletDiv.style.top = `${bullet.y}px`;
+                    bulletDiv.style.width = `${bullet.width}px`;
+                    bulletDiv.style.height = `${bullet.height}px`;
+                    bulletDiv.style.background = '#ff0000';
+                    container.appendChild(bulletDiv);
+                }
+            });
+        };
+
+        // Collision checks
+        const checkPlayerBulletAlienCollisions = () => {
+            playerBullets.forEach(bullet => {
+                if (!bullet.active) return;
+
+                aliens.forEach(alien => {
+                    if (!alien.alive) return;
+
+                    if (isColliding(bullet, alien)) {
+                        alien.alive = false;
+                        bullet.active = false;
+
+                        // Score based on row
+                        if (alien.row === 0) score += 30; // Red
+                        else if (alien.row === 1) score += 20; // Green
+                        else if (alien.row === 2) score += 10; // Blue
+                    }
+                });
+            });
+        };
+
+        const checkAlienSpaceshipCollision = () => {
+            if (!spaceshipState.alive) return;
+
+            // Check if any alien reached the spaceship level
+            const lowestAlien = aliens
+                .filter(alien => alien.alive)
+                .reduce((lowest, current) => current.y > lowest.y ? current : lowest, { y: 0 });
+
+            if (lowestAlien.y + lowestAlien.height >= spaceshipState.y) {
+                killSpaceship();
+                return;
+            }
+
+            // Check alien bullet collisions
+            alienBullets.forEach(bullet => {
+                if (bullet.active && isColliding(bullet, spaceshipState)) {
+                    bullet.active = false;
+                    killSpaceship();
+                }
+            });
+        };
+
+        // Death and game over
+        const killSpaceship = () => {
+            spaceshipState.alive = false;
+            gameOver = true;
+            spaceship.style.display = 'none';
+        };
+
+        const startNextWave = () => {
+            if (aliens.every(alien => !alien.alive)) {
+                wave++;
+                alienSpeed += 0.2;
+                initializeAliens();
+                renderAliens();
+            }
+        };
+
+        // Game loop
+        const updateGame = () => {
+            if (!gameStarted || gameOver) return;
+
+            // Update state
+            spaceshipState.cooldown = Math.max(0, spaceshipState.cooldown - 1);
+            updateAliens();
+            updatePlayerBullets();
+            updateAlienBullets();
+            alienShoot();
+
+            // Check collisions
+            checkPlayerBulletAlienCollisions();
+            checkAlienSpaceshipCollision();
+
+            // Check for next wave
+            startNextWave();
+        };
+
+        const renderSpaceship = () => {
+            spaceship.style.left = spaceshipState.x + 'px';
+        };
+
+        const renderGame = () => {
+            if (!gameStarted) return;
+
+            const bulletContainer = document.getElementById('bullet__container');
+            bulletContainer.innerHTML = '';
+
+            renderSpaceship();
+            renderAliens();
+            renderPlayerBullets();
+            renderAlienBullets();
+        };
+
+        const cleanState = () => {
+            playerBullets = playerBullets.filter(bullet => bullet.active);
+            alienBullets = alienBullets.filter(bullet => bullet.active);
+        };
+
+        const gameLoop = () => {
+            updateGame();
+            cleanState();
+            renderGame();
+
+            if (gameOver) {
+                showEndScreen();
+                return;
+            }
+
+            requestAnimationFrame(gameLoop);
+        };
+
+        const showEndScreen = () => {
+            endScreen.classList.remove('hidden');
+            finalScore.textContent = `Final Score: ${score}`;
+            finalWave.textContent = `Wave Reached: ${wave}`;
+        };
+
+        const resetGame = () => {
+            spaceshipState = {
+                x: 375,
+                y: 540,
+                width: 50,
+                height: 30,
+                alive: true,
+                cooldown: 0
+            };
+            aliens = [];
+            playerBullets = [];
+            alienBullets = [];
+            score = 0;
+            wave = 1;
+            gameOver = false;
+            alienDirection = 1;
+            alienSpeed = 1;
+
+            spaceship.style.left = spaceshipState.x + 'px';
+            spaceship.style.display = 'block';
+
+            endScreen.classList.add('hidden');
+            gameArea.classList.remove('hidden');
+
+            initializeAliens();
+            renderAliens();
+            gameLoop();
+        };
+
+        const moveSpaceship = (direction) => {
+            if (!spaceshipState.alive || gameOver) return;
+
+            if (direction === 'left' && spaceshipState.x > 0) {
+                spaceshipState.x -= 15;
+            } else if (direction === 'right' && spaceshipState.x < 750) {
+                spaceshipState.x += 15;
+            }
+            spaceship.style.left = spaceshipState.x + 'px';
         };
 
         const init = () => {
@@ -168,6 +569,7 @@
                 console.log('Peer connected!');
                 status.textContent = 'Connected! Press START to begin';
                 status.style.color = '#00ff00';
+                qrDiv.classList.add('hidden');
                 startButton.classList.remove('hidden');
                 startButton.disabled = false;
             });
@@ -179,7 +581,7 @@
                     if (command.type === 'playerMove') {
                         moveSpaceship(command.direction);
                     } else if (command.type === 'playerShoot') {
-                        console.log('Shoot!');
+                        shootPlayerBullet();
                     }
                 } catch (err) {
                     console.error('Failed to parse command:', err);
@@ -207,7 +609,57 @@
             startButton.classList.add('hidden');
             gameArea.classList.remove('hidden');
             status.classList.add('hidden');
+
+            // Initialize game entities
+            initializeAliens();
+            renderAliens();
+            gameLoop();
         });
+
+        playAgainButton.addEventListener('click', () => {
+            resetGame();
+        });
+
+        const renderAliens = () => {
+            const container = document.getElementById('alien__container');
+            container.innerHTML = '';
+
+            if (!aliens.length) return;
+
+            const rows = Array.from(new Set(aliens.map((alien) => alien.row))).sort((a, b) => a - b);
+
+            rows.forEach((rowIndex) => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'alien_row';
+                rowDiv.dataset.row = rowIndex;
+                rowDiv.style.position = 'absolute';
+                rowDiv.style.left = '0';
+                rowDiv.style.top = `${ALIEN_START_Y + rowIndex * ROW_SPACING}px`;
+                rowDiv.style.width = '100%';
+                rowDiv.style.height = `${ALIEN_HEIGHT}px`;
+
+                const aliensInRow = aliens.filter((alien) => alien.row === rowIndex && alien.alive);
+                aliensInRow.forEach((alien) => {
+                    const alienDiv = document.createElement('div');
+                    alienDiv.className = 'alien';
+                    alienDiv.style.position = 'absolute';
+                    alienDiv.style.left = `${alien.x}px`;
+                    alienDiv.style.top = '0';
+                    alienDiv.style.width = `${alien.width}px`;
+                    alienDiv.style.height = `${alien.height}px`;
+                    alienDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="55" viewBox="0 0 120 110" fill="none"> 
+                        <path d="M10.9091 110H21.8182V99.0002H10.9091V110ZM109.093 110V99.0002H98.1835V110H109.093ZM109.093 44.0002V33.0003H87.2744V10.9998H76.3653V32.9995H65.4562V21.9997H54.5471V10.9998H76.3653V0H43.6372V10.9998H32.7281V32.9995H10.9091V43.9993H0V76.9988H10.9091V87.9986H21.8182V98.9985H32.7273V87.9986H54.5455V109.998H65.4545V87.9986H87.2727V98.9985H98.1818V87.9986H109.091V76.9988H120V43.9993H109.091L109.093 44.0002ZM32.7273 65.9998H21.8182V55H32.7273V65.9998ZM54.5463 65.9998H43.6372V55H54.5463V65.9998ZM76.3645 65.9998H65.4554V55H76.3645V65.9998ZM98.1835 65.9998H87.2744V55H98.1835V65.9998Z" fill="${alien.color}" /> 
+                        </svg >`;
+                    alienDiv.dataset.id = alien.id;
+
+                    rowDiv.appendChild(alienDiv);
+                });
+
+                container.appendChild(rowDiv);
+            });
+        };
+
+
 
         window.addEventListener('DOMContentLoaded', init);
     </script>
