@@ -110,6 +110,13 @@ intro screen -> game start screen -> gameplay -> game end -> score / new game
 ## Week 4 16.03-22.03
 ### Goals
 1. Finish gameplay logic
+-render aliens
+-player shooting mechanics
+-alien shooting mechanics
+-kill alien mechanics
+-kill player mechanics
+-respawn wave mechanics
+-score + play again
 2. Add gyroscope control 
 3. Add finishing touches and submit
 ## Use of AI
@@ -148,3 +155,40 @@ Sender initiates peer with initiator: true and generates an offer
 Server relays the signal between sender and receiver
 Receiver receives the offer and creates a peer with initiator: false to answer
 Complete the SDP handshake
+
+### use 5
+game logic
+
+### use 6
+fixing bugs:
+render alien function only works correctly after the initialization, but fails after update
+
+ Fix 1: renderAliens() now uses alien.y correctly
+Before:
+
+rowDiv.top used ALIEN_START_Y + rowIndex * ROW_SPACING (static)
+each alien had top = 0, so downward motion was ignored
+After:
+
+rowDiv.top = 0 (static container)
+each alienDiv.top = ${alien.y}px`` (dynamic)
+alien downward movement in updateAliens() now appears during render
+
+
+### use 7
+after adding a spaceship sprite, the spaceship hitbox became weird.
+ 
+🛠️ Fix 2: correct spaceship collision box from real drawn ship
+Before:
+
+used spaceshipState 50x30 for collision
+SVG actual visual is 90x100, so hits felt off
+After:
+
+in checkAlienSpaceshipCollision(), spaceship collider now from:
+spaceship.getBoundingClientRect()
+normalized to gameArea coords
+used for:
+alien reach threshold check
+alien-bullet vs ship
+alien vs ship direct collision
