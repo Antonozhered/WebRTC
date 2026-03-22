@@ -69,8 +69,21 @@
             grid-row: 2;
         }
 
+        #shield {
+            grid-column: 1;
+            grid-row: 3;
+            background: #1bde29;
+            color: #fff;
+            text-shadow: 0 0 5px #1bde29;
+        }
+
+        #shield.active {
+            background: #0fbf17;
+            box-shadow: 0 0 20px #1bde29;
+        }
+
         #shoot {
-            grid-column: 2;
+            grid-column: 3;
             grid-row: 3;
             background: #e94560;
             color: #fff;
@@ -85,6 +98,23 @@
 
         #shoot:active {
             box-shadow: 0 0 20px #e94560;
+        }
+
+        #shield.cooldown,
+        #shoot.cooldown {
+            background: #555 !important;
+            border-color: #444 !important;
+            color: #ccc !important;
+            cursor: not-allowed !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+
+        #shield.cooldown:hover,
+        #shoot.cooldown:hover {
+            background: #555 !important;
+            border-color: #444 !important;
+            box-shadow: none !important;
         }
 
         .status {
@@ -135,6 +165,7 @@
     <div class="hidden controller" id="controller">
         <button id="moveLeft">← LEFT</button>
         <button id="moveRight">RIGHT →</button>
+        <button id="shield">SHIELD</button>
         <button id="shoot">SHOOT</button>
     </div>
     <button class="hidden" id="startButton">START GAME</button>
@@ -148,6 +179,7 @@
     <script>
         const $moveLeft = document.getElementById('moveLeft');
         const $moveRight = document.getElementById('moveRight');
+        const $shield = document.getElementById('shield');
         const $shoot = document.getElementById('shoot');
         const $status = document.getElementById('status');
         const $startButton = document.getElementById('startButton');
@@ -155,6 +187,10 @@
 
         let socket;
         let peer;
+
+        let shieldActive = false;
+        let shieldCooldown = 0;
+        let shootCooldown = 0;
         let receiverId;
         let gameStarted = false;
         let localStream;
@@ -211,8 +247,24 @@
                 sendCommand({ type: 'playerMove', direction: 'right' });
             });
 
+            $shield.addEventListener('click', () => {
+                if (shieldCooldown > 0 || shieldActive) return;
+                shieldActive = true;
+                sendCommand({ type: 'playerShield', active: true });
+                $shield.classList.add('active');
+                shieldCooldown = 300; // 5 seconds cooldown after shield expires
+
+                setTimeout(() => {
+                    shieldActive = false;
+                    $shield.classList.remove('active');
+                    sendCommand({ type: 'playerShield', active: false });
+                }, 4000);
+            });
+
             $shoot.addEventListener('click', () => {
+                if (shootCooldown > 0 || shieldActive) return;
                 sendCommand({ type: 'playerShoot' });
+                shootCooldown = 15; // small shoot cooldown
             });
 
             document.addEventListener('keydown', (e) => {
@@ -224,8 +276,22 @@
                     $moveRight.style.transform = 'scale(0.95)';
                 } else if (e.key === ' ') {
                     e.preventDefault();
+                    if (shootCooldown > 0 || shieldActive) return;
                     sendCommand({ type: 'playerShoot' });
                     $shoot.style.transform = 'scale(0.95)';
+                    shootCooldown = 15;
+                } else if (e.key.toLowerCase() === 's') {
+                    e.preventDefault();
+                    if (shieldCooldown > 0 || shieldActive) return;
+                    shieldActive = true;
+                    sendCommand({ type: 'playerShield', active: true });
+                    $shield.classList.add('active');
+                    shieldCooldown = 300;
+                    setTimeout(() => {
+                        shieldActive = false;
+                        $shield.classList.remove('active');
+                        sendCommand({ type: 'playerShield', active: false });
+                    }, 4000);
                 }
             });
 
@@ -238,6 +304,32 @@
                     $shoot.style.transform = 'scale(1)';
                 }
             });
+
+            const updateCooldownUI = () => {
+                if (shieldCooldown > 0) {
+                    $shield.classList.add('cooldown');
+                } else {
+                    $shield.classList.remove('cooldown');
+                }
+
+                if (shootCooldown > 0 || shieldActive) {
+                    $shoot.classList.add('cooldown');
+                } else {
+                    $shoot.classList.remove('cooldown');
+                }
+            };
+
+            setInterval(() => {
+                if (shieldCooldown > 0) {
+                    shieldCooldown--;
+                }
+                if (shootCooldown > 0) {
+                    shootCooldown--;
+                }
+                updateCooldownUI();
+            }, 16);
+
+            updateCooldownUI();
         };
 
         const initiatePeerConnection = () => {
