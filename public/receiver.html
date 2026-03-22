@@ -503,10 +503,7 @@
             width: 90,
             height: 70,
             alive: true,
-            cooldown: 0,
-            shieldActive: false,
-            shieldCooldown: 0,
-            gyroGamma: 0
+            cooldown: 0
         };
 
         let aliens = [];
@@ -781,12 +778,6 @@
 
             // Update state
             spaceshipState.cooldown = Math.max(0, spaceshipState.cooldown - 1);
-            if (spaceshipState.shieldCooldown > 0) {
-                spaceshipState.shieldCooldown = Math.max(0, spaceshipState.shieldCooldown - 1);
-            }
-            // Update spaceship x from gyroscope
-            spaceshipState.x = Math.max(0, Math.min(750, 375 + (spaceshipState.gyroGamma / 90) * 375));
-
             updateAliens();
             updatePlayerBullets();
             updateAlienBullets();
@@ -802,13 +793,6 @@
 
         const renderSpaceship = () => {
             spaceship.style.left = spaceshipState.x + 'px';
-            if (spaceshipState.shieldActive) {
-                spaceship.style.boxShadow = '0 0 25px 10px rgba(0, 255, 0, 0.8), inset 0 0 15px rgba(0,255,0,0.8)';
-                spaceship.style.borderRadius = '70%';
-            } else {
-                spaceship.style.boxShadow = '';
-                spaceship.style.borderRadius = '';
-            }
         };
 
         const renderGame = () => {
@@ -913,10 +897,7 @@
                 width: 90,
                 height: 70,
                 alive: true,
-                cooldown: 0,
-                shieldActive: false,
-                shieldCooldown: 0,
-                gyroGamma: 0
+                cooldown: 0
             };
             aliens = [];
             playerBullets = [];
@@ -1023,13 +1004,6 @@
                         spaceshipState.gyroGamma = command.gamma;
                     } else if (command.type === 'playerShoot') {
                         shootPlayerBullet();
-                    } else if (command.type === 'playerShield') {
-                        spaceshipState.shieldActive = command.active;
-                        if (!command.active) {
-                            spaceshipState.shieldCooldown = 12; // cooldown after release
-                        }
-                    } else if (command.type === 'resetGame') {
-                        resetGame();
                     }
                 } catch (err) {
                     console.error('Failed to parse command:', err);
