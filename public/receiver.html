@@ -638,7 +638,10 @@
             width: 90,
             height: 70,
             alive: true,
-            cooldown: 0
+            cooldown: 0,
+            shieldActive: false,
+            shieldTimer: 0,
+            shieldCooldown: 0
         };
 
         let aliens = [];
@@ -703,7 +706,7 @@
 
         // Player bullet functions
         const shootPlayerBullet = () => {
-            if (!spaceshipState.alive || gameOver || spaceshipState.cooldown > 0) return;
+            if (!spaceshipState.alive || gameOver || spaceshipState.cooldown > 0 || spaceshipState.shieldActive) return;
 
             playerBullets.push({
                 x: spaceshipState.x + (spaceshipState.width / 2),
@@ -877,7 +880,9 @@
             alienBullets.forEach(bullet => {
                 if (bullet.active && isColliding(bullet, shipCollider)) {
                     bullet.active = false;
-                    killSpaceship();
+                    if (!spaceshipState.shieldActive) {
+                        killSpaceship();
+                    }
                 }
             });
 
@@ -911,6 +916,16 @@
 
             // Update state
             spaceshipState.cooldown = Math.max(0, spaceshipState.cooldown - 1);
+            if (spaceshipState.shieldActive) {
+                spaceshipState.shieldTimer = Math.max(0, spaceshipState.shieldTimer - 1);
+                if (spaceshipState.shieldTimer === 0) {
+                    spaceshipState.shieldActive = false;
+                }
+            }
+            if (spaceshipState.shieldCooldown > 0) {
+                spaceshipState.shieldCooldown = Math.max(0, spaceshipState.shieldCooldown - 1);
+            }
+
             updateAliens();
             updatePlayerBullets();
             updateAlienBullets();
@@ -926,6 +941,13 @@
 
         const renderSpaceship = () => {
             spaceship.style.left = spaceshipState.x + 'px';
+            if (spaceshipState.shieldActive) {
+                spaceship.style.boxShadow = '0 0 25px 10px rgba(0, 255, 0, 0.8), inset 0 0 15px rgba(0,255,0,0.8)';
+                spaceship.style.borderRadius = '50%';
+            } else {
+                spaceship.style.boxShadow = '';
+                spaceship.style.borderRadius = '';
+            }
         };
 
         const renderGame = () => {
@@ -1022,10 +1044,13 @@
             spaceshipState = {
                 x: 375,
                 y: 540,
-                width: 50,
-                height: 30,
+                width: 90,
+                height: 70,
                 alive: true,
-                cooldown: 0
+                cooldown: 0,
+                shieldActive: false,
+                shieldTimer: 0,
+                shieldCooldown: 0
             };
             aliens = [];
             playerBullets = [];
@@ -1132,6 +1157,15 @@
                         moveSpaceship(command.direction);
                     } else if (command.type === 'playerShoot') {
                         shootPlayerBullet();
+                    } else if (command.type === 'playerShield') {
+                        if (command.active && !spaceshipState.shieldActive && spaceshipState.shieldCooldown === 0) {
+                            spaceshipState.shieldActive = true;
+                            spaceshipState.shieldTimer = 200; // ~4 seconds at 60fps
+                            spaceshipState.shieldCooldown = 10; // ~6 seconds after deactivation
+                        } else if (!command.active) {
+                            spaceshipState.shieldActive = false;
+                            spaceshipState.shieldTimer = 0;
+                        }
                     }
                 } catch (err) {
                     console.error('Failed to parse command:', err);
