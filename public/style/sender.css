@@ -1,0 +1,172 @@
+ body {
+     display: flex;
+     flex-direction: column;
+     align-items: center;
+     justify-content: center;
+     min-height: 100vh;
+     margin: 0;
+     background-image: url(../assets/controller_background.png);
+     background-size: 100%;
+     background-repeat: no-repeat;
+     background-position: center;
+     background-color: #030c03;
+     font-family: Arial, sans-serif;
+     color: #20154d;
+ }
+
+ h1 {
+     color: #e94560;
+     margin-bottom: 40px;
+     text-shadow: 0 0 10px #e94560;
+     background: rgba(0, 0, 0, 0.7);
+     padding: 15px 30px;
+     border-radius: 10px;
+     text-align: center;
+ }
+
+ .controller {
+     display: grid;
+     grid-template-columns: repeat(2, 150px);
+     grid-template-rows: 150px;
+     gap: 20px;
+     padding: 30px;
+     background: rgba(0, 0, 0, 0.5);
+     border: 3px solid #e94560;
+     border-radius: 10px;
+     box-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+     margin: 0 auto;
+ }
+
+ button {
+     font-size: 16px;
+     font-weight: bold;
+     border: 2px solid #0f3460;
+     background: #16213e;
+     color: #00d4ff;
+     cursor: pointer;
+     border-radius: 5px;
+     transition: all 0.1s;
+     text-shadow: 0 0 5px #00d4ff;
+ }
+
+ button:hover {
+     background: #0f3460;
+     border-color: #00d4ff;
+     box-shadow: 0 0 10px #00d4ff;
+ }
+
+ button:active {
+     transform: scale(0.95);
+     box-shadow: 0 0 20px #00d4ff;
+ }
+
+ #shield {
+     grid-column: 1;
+     grid-row: 1;
+     background: #1bde29;
+     color: #fff;
+     text-shadow: 0 0 5px #1bde29;
+ }
+
+ #shield.active {
+     background: #0fbf17;
+     box-shadow: 0 0 20px #1bde29;
+ }
+
+ #shoot {
+     grid-column: 2;
+     grid-row: 1;
+     background: #e94560;
+     color: #fff;
+     text-shadow: 0 0 5px #e94560;
+ }
+
+ #shoot:hover {
+     background: #ff6b7a;
+     border-color: #e94560;
+     box-shadow: 0 0 10px #e94560;
+ }
+
+ #shoot:active {
+     box-shadow: 0 0 20px #e94560;
+ }
+
+ #shield.cooldown,
+ #shoot.cooldown {
+     background: #555 !important;
+     border-color: #444 !important;
+     color: #ccc !important;
+     cursor: not-allowed !important;
+     box-shadow: none !important;
+     text-shadow: none !important;
+ }
+
+ #shield.cooldown:hover,
+ #shoot.cooldown:hover {
+     background: #555 !important;
+     border-color: #444 !important;
+     box-shadow: none !important;
+ }
+
+ .status {
+     margin-top: 30px;
+     padding: 10px 20px;
+     background: rgba(0, 0, 0, 0.7);
+     border: 2px solid #00d4ff;
+     border-radius: 5px;
+     color: #00d4ff;
+     text-shadow: 0 0 5px #00d4ff;
+ }
+
+ .hidden {
+     display: none;
+ }
+
+ #startButton {
+     margin-top: 20px;
+     padding: 15px 40px;
+     font-size: 20px;
+     font-weight: bold;
+     background: #e94560;
+     color: #fff;
+     border: 2px solid #ff6b7a;
+     border-radius: 10px;
+     cursor: pointer;
+     transition: all 0.2s;
+ }
+
+ #startButton:hover {
+     background: #ff6b7a;
+     box-shadow: 0 0 20px #e94560;
+ }
+
+ #startButton:active {
+     transform: scale(0.95);
+ }
+
+ #startButton:disabled {
+     opacity: 0.5;
+     cursor: not-allowed;
+ }
+
+ #playAgain {
+     margin-top: 20px;
+     padding: 15px 40px;
+     font-size: 20px;
+     font-weight: bold;
+     background: #e94560;
+     color: #fff;
+     border: 2px solid #ff6b7a;
+     border-radius: 10px;
+     cursor: pointer;
+     transition: all 0.2s;
+ }
+
+ #playAgain:hover {
+     background: #ff6b7a;
+     box-shadow: 0 0 20px #e94560;
+ }
+
+ #playAgain:active {
+     transform: scale(0.95);
+ }

@@ -5,170 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spaceship Controller</title>
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            font-family: Arial, sans-serif;
-            color: #20154d;
-        }
-
-        h1 {
-            color: #e94560;
-            margin-bottom: 40px;
-            text-shadow: 0 0 10px #e94560;
-        }
-
-        .controller {
-            display: grid;
-            grid-template-columns: repeat(3, 100px);
-            grid-template-rows: repeat(3, 100px);
-            gap: 10px;
-            padding: 30px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 3px solid #e94560;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
-        }
-
-        button {
-            font-size: 16px;
-            font-weight: bold;
-            border: 2px solid #0f3460;
-            background: #16213e;
-            color: #00d4ff;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: all 0.1s;
-            text-shadow: 0 0 5px #00d4ff;
-        }
-
-        button:hover {
-            background: #0f3460;
-            border-color: #00d4ff;
-            box-shadow: 0 0 10px #00d4ff;
-        }
-
-        button:active {
-            transform: scale(0.95);
-            box-shadow: 0 0 20px #00d4ff;
-        }
-
-        #moveLeft {
-            grid-column: 1;
-            grid-row: 2;
-        }
-
-        #moveRight {
-            grid-column: 3;
-            grid-row: 2;
-        }
-
-        #shield {
-            grid-column: 1;
-            grid-row: 3;
-            background: #1bde29;
-            color: #fff;
-            text-shadow: 0 0 5px #1bde29;
-        }
-
-        #shield.active {
-            background: #0fbf17;
-            box-shadow: 0 0 20px #1bde29;
-        }
-
-        #shoot {
-            grid-column: 3;
-            grid-row: 3;
-            background: #e94560;
-            color: #fff;
-            text-shadow: 0 0 5px #e94560;
-        }
-
-        #shoot:hover {
-            background: #ff6b7a;
-            border-color: #e94560;
-            box-shadow: 0 0 10px #e94560;
-        }
-
-        #shoot:active {
-            box-shadow: 0 0 20px #e94560;
-        }
-
-        #shield.cooldown,
-        #shoot.cooldown {
-            background: #555 !important;
-            border-color: #444 !important;
-            color: #ccc !important;
-            cursor: not-allowed !important;
-            box-shadow: none !important;
-            text-shadow: none !important;
-        }
-
-        #shield.cooldown:hover,
-        #shoot.cooldown:hover {
-            background: #555 !important;
-            border-color: #444 !important;
-            box-shadow: none !important;
-        }
-
-        .status {
-            margin-top: 30px;
-            padding: 10px 20px;
-            background: rgba(0, 212, 255, 0.1);
-            border: 2px solid #00d4ff;
-            border-radius: 5px;
-            color: #00d4ff;
-            text-shadow: 0 0 5px #00d4ff;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        #startButton {
-            margin-top: 20px;
-            padding: 15px 40px;
-            font-size: 20px;
-            font-weight: bold;
-            background: #e94560;
-            color: #fff;
-            border: 2px solid #ff6b7a;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        #startButton:hover {
-            background: #ff6b7a;
-            box-shadow: 0 0 20px #e94560;
-        }
-
-        #startButton:active {
-            transform: scale(0.95);
-        }
-
-        #startButton:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-    </style>
+    <link rel="stylesheet" href="./style/sender.css">
 </head>
 
 <body>
     <h1>SPACESHIP CONTROLLER</h1>
     <div class="hidden controller" id="controller">
-        <button id="moveLeft">← LEFT</button>
-        <button id="moveRight">RIGHT →</button>
         <button id="shield">SHIELD</button>
         <button id="shoot">SHOOT</button>
     </div>
     <button class="hidden" id="startButton">START GAME</button>
+    <button class="hidden" id="playAgain">PLAY AGAIN</button>
     <div class="status" id="status">Connecting...</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"
@@ -177,20 +24,16 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const $moveLeft = document.getElementById('moveLeft');
-        const $moveRight = document.getElementById('moveRight');
         const $shield = document.getElementById('shield');
         const $shoot = document.getElementById('shoot');
         const $status = document.getElementById('status');
         const $startButton = document.getElementById('startButton');
         const $controller = document.getElementById('controller');
+        const $playAgain = document.getElementById('playAgain');
 
         let socket;
         let peer;
 
-        let shieldActive = false;
-        let shieldCooldown = 0;
-        let shootCooldown = 0;
         let receiverId;
         let gameStarted = false;
         let localStream;
@@ -239,97 +82,45 @@
                 $status.style.color = '#ff0000';
             });
 
-            $moveLeft.addEventListener('click', () => {
-                sendCommand({ type: 'playerMove', direction: 'left' });
+            // Gyroscope controls
+            if (window.DeviceOrientationEvent) {
+                window.addEventListener('deviceorientation', (event) => {
+                    const gamma = event.gamma; // Left-right tilt in degrees
+                    if (gamma !== null) {
+                        // Map gamma to x position (assuming landscape mode)
+                        // Gamma ranges from -90 to 90
+                        // Map to canvas width (assuming 800px)
+                        const x = ((gamma + 90) / 180) * 800;
+                        sendCommand({ type: 'gyroscope', x: Math.max(0, Math.min(800, x)) });
+                    }
+                });
+            } else {
+                console.log('DeviceOrientationEvent not supported');
+            }
+
+            $shoot.addEventListener('mousedown', () => {
+                peer.send(JSON.stringify({ type: 'shoot' }));
+            });
+            $shoot.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                peer.send(JSON.stringify({ type: 'shoot' }));
             });
 
-            $moveRight.addEventListener('click', () => {
-                sendCommand({ type: 'playerMove', direction: 'right' });
+            $shield.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                peer.send(JSON.stringify({ type: 'activateShield' }));
+            });
+            $shield.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                peer.send(JSON.stringify({ type: 'deactivateShield' }));
             });
 
-            $shield.addEventListener('click', () => {
-                if (shieldCooldown > 0 || shieldActive) return;
-                shieldActive = true;
-                sendCommand({ type: 'playerShield', active: true });
-                $shield.classList.add('active');
-                shieldCooldown = 300; // 5 seconds cooldown after shield expires
-
-                setTimeout(() => {
-                    shieldActive = false;
-                    $shield.classList.remove('active');
-                    sendCommand({ type: 'playerShield', active: false });
-                }, 4000);
+            $playAgain.addEventListener('click', () => {
+                peer.send(JSON.stringify({ type: 'resetGame' }));
+                $playAgain.classList.add('hidden');
+                $controller.classList.remove('hidden');
+                $status.classList.add('hidden');
             });
-
-            $shoot.addEventListener('click', () => {
-                if (shootCooldown > 0 || shieldActive) return;
-                sendCommand({ type: 'playerShoot' });
-                shootCooldown = 15; // small shoot cooldown
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'ArrowLeft') {
-                    sendCommand({ type: 'playerMove', direction: 'left' });
-                    $moveLeft.style.transform = 'scale(0.95)';
-                } else if (e.key === 'ArrowRight') {
-                    sendCommand({ type: 'playerMove', direction: 'right' });
-                    $moveRight.style.transform = 'scale(0.95)';
-                } else if (e.key === ' ') {
-                    e.preventDefault();
-                    if (shootCooldown > 0 || shieldActive) return;
-                    sendCommand({ type: 'playerShoot' });
-                    $shoot.style.transform = 'scale(0.95)';
-                    shootCooldown = 15;
-                } else if (e.key.toLowerCase() === 's') {
-                    e.preventDefault();
-                    if (shieldCooldown > 0 || shieldActive) return;
-                    shieldActive = true;
-                    sendCommand({ type: 'playerShield', active: true });
-                    $shield.classList.add('active');
-                    shieldCooldown = 300;
-                    setTimeout(() => {
-                        shieldActive = false;
-                        $shield.classList.remove('active');
-                        sendCommand({ type: 'playerShield', active: false });
-                    }, 4000);
-                }
-            });
-
-            document.addEventListener('keyup', (e) => {
-                if (e.key === 'ArrowLeft') {
-                    $moveLeft.style.transform = 'scale(1)';
-                } else if (e.key === 'ArrowRight') {
-                    $moveRight.style.transform = 'scale(1)';
-                } else if (e.key === ' ') {
-                    $shoot.style.transform = 'scale(1)';
-                }
-            });
-
-            const updateCooldownUI = () => {
-                if (shieldCooldown > 0) {
-                    $shield.classList.add('cooldown');
-                } else {
-                    $shield.classList.remove('cooldown');
-                }
-
-                if (shootCooldown > 0 || shieldActive) {
-                    $shoot.classList.add('cooldown');
-                } else {
-                    $shoot.classList.remove('cooldown');
-                }
-            };
-
-            setInterval(() => {
-                if (shieldCooldown > 0) {
-                    shieldCooldown--;
-                }
-                if (shootCooldown > 0) {
-                    shootCooldown--;
-                }
-                updateCooldownUI();
-            }, 16);
-
-            updateCooldownUI();
         };
 
         const initiatePeerConnection = () => {
@@ -369,6 +160,22 @@
                 $status.textContent = 'Peer connection closed';
                 $status.style.borderColor = '#ff0000';
                 $status.style.color = '#ff0000';
+            });
+
+            peer.on('data', (data) => {
+                try {
+                    const command = JSON.parse(data);
+                    if (command.type === 'gameOver') {
+                        $controller.classList.add('hidden');
+                        $playAgain.classList.remove('hidden');
+                        $status.classList.remove('hidden');
+                        $status.textContent = 'Game Over! Press PLAY AGAIN';
+                        $status.style.borderColor = '#ffa500';
+                        $status.style.color = '#ffa500';
+                    }
+                } catch (err) {
+                    console.error('Failed to parse command:', err);
+                }
             });
         };
 
