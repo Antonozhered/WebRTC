@@ -88,7 +88,8 @@
     <div class="status" id="status">Waiting for connection...</div>
     <div id="qr"></div>
     <button class="hidden" id="startButton">START GAME</button>
-    <div class="hidden" id="gameArea">   
+    <div class="hidden" id="gameArea">  
+        <div id="alien__container"></div> 
         <div id="spaceship"></div>
     </div>
 
@@ -109,6 +110,49 @@
         let position = 375;
         let senderId;
         let gameStarted = false;
+
+        // Aliens array and state
+        let aliens = [];
+        let alienDirection = 1; // 1 for right, -1 for left
+        let alienMoveCounter = 0;
+
+        // Alien configurations: red (top, fastest), green (middle), blue (bottom, slowest)
+        const alienConfigs = [
+            { color: '#EE1B1B', shootRate: 0.8, row: 0 },  // Red: fastest
+            { color: '#1BEE29', shootRate: 0.5, row: 1 },  // Green: moderate
+            { color: '#008CFF', shootRate: 0.3, row: 2 }   // Blue: slowest
+        ];
+
+        const ALIEN_WIDTH = 60;
+        const ALIEN_HEIGHT = 55;
+        const ALIEN_SPACING = 60 + 32; // 60 width + 32 spacing
+        const ROW_SPACING = 55 + 16; // 55 height + 16 spacing
+        const ALIEN_START_X = 50;
+        const ALIEN_START_Y = 50;
+
+        // Initialize aliens with properties
+        function initializeAliens() {
+            aliens = [];
+            let alienId = 0;
+
+            alienConfigs.forEach((config) => {
+                for (let i = 0; i < 7; i++) {
+                    aliens.push({
+                        id: alienId++,
+                        x: ALIEN_START_X + (i * ALIEN_SPACING),
+                        y: ALIEN_START_Y + (config.row * ROW_SPACING),
+                        width: ALIEN_WIDTH,
+                        height: ALIEN_HEIGHT,
+                        color: config.color,
+                        row: config.row,
+                        shootRate: config.shootRate,  // 0.8 (red), 0.5 (green), 0.3 (blue)
+                        alive: true
+                    });
+                }
+            });
+
+            console.log(`Initialized ${aliens.length} aliens`);
+        }
 
         const moveSpaceship = (direction) => {
             if (direction === 'left' && position > 0) {
@@ -207,7 +251,52 @@
             startButton.classList.add('hidden');
             gameArea.classList.remove('hidden');
             status.classList.add('hidden');
+            
+            // Initialize game entities
+            initializeAliens();
+            renderAliens();
         });
+
+        const renderAliens = () => {
+            const container = document.getElementById('alien__container');
+            container.innerHTML = '';
+
+            if (!aliens.length) return;
+
+            const rows = Array.from(new Set(aliens.map((alien) => alien.row))).sort((a, b) => a - b);
+
+            rows.forEach((rowIndex) => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'alien_row';
+                rowDiv.dataset.row = rowIndex;
+                rowDiv.style.position = 'absolute';
+                rowDiv.style.left = '0';
+                rowDiv.style.top = `${ALIEN_START_Y + rowIndex * ROW_SPACING}px`;
+                rowDiv.style.width = '100%';
+                rowDiv.style.height = `${ALIEN_HEIGHT}px`;
+
+                const aliensInRow = aliens.filter((alien) => alien.row === rowIndex && alien.alive);
+                aliensInRow.forEach((alien) => {
+                    const alienDiv = document.createElement('div');
+                    alienDiv.className = 'alien';
+                    alienDiv.style.position = 'absolute';
+                    alienDiv.style.left = `${alien.x}px`;
+                    alienDiv.style.top = '0';
+                    alienDiv.style.width = `${alien.width}px`;
+                    alienDiv.style.height = `${alien.height}px`;
+                    alienDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="55" viewBox="0 0 120 110" fill="none"> 
+                        <path d="M10.9091 110H21.8182V99.0002H10.9091V110ZM109.093 110V99.0002H98.1835V110H109.093ZM109.093 44.0002V33.0003H87.2744V10.9998H76.3653V32.9995H65.4562V21.9997H54.5471V10.9998H76.3653V0H43.6372V10.9998H32.7281V32.9995H10.9091V43.9993H0V76.9988H10.9091V87.9986H21.8182V98.9985H32.7273V87.9986H54.5455V109.998H65.4545V87.9986H87.2727V98.9985H98.1818V87.9986H109.091V76.9988H120V43.9993H109.091L109.093 44.0002ZM32.7273 65.9998H21.8182V55H32.7273V65.9998ZM54.5463 65.9998H43.6372V55H54.5463V65.9998ZM76.3645 65.9998H65.4554V55H76.3645V65.9998ZM98.1835 65.9998H87.2744V55H98.1835V65.9998Z" fill="${alien.color}" /> 
+                        </svg >`;
+                    alienDiv.dataset.id = alien.id;
+
+                    rowDiv.appendChild(alienDiv);
+                });
+
+                container.appendChild(rowDiv);
+            });
+        };
+        
+        
 
         window.addEventListener('DOMContentLoaded', init);
     </script>
