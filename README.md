@@ -192,3 +192,6 @@ used for:
 alien reach threshold check
 alien-bullet vs ship
 alien vs ship direct collision
+
+### use 8 
+adding a camera feature.

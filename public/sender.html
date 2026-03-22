@@ -157,8 +157,26 @@
         let peer;
         let receiverId;
         let gameStarted = false;
+        let localStream;
 
-        const init = () => {
+        const init = async () => {
+            // Request camera permission immediately
+            try {
+                console.log('Requesting camera for sender...');
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user' // Front camera for mobile
+                    },
+                    audio: false
+                });
+                console.log('Sender camera ready');
+            } catch (err) {
+                console.error('Failed to get sender camera:', err);
+                // Continue without camera - game will still work
+            }
+
             socket = io.connect('/');
             socket.on('connect', () => {
                 console.log(`Connected: ${socket.id}`);
@@ -225,7 +243,8 @@
         const initiatePeerConnection = () => {
             peer = new SimplePeer({
                 initiator: true,
-                trickleIce: false
+                trickleIce: false,
+                stream: localStream // Add camera stream to peer connection
             });
 
             peer.on('signal', data => {

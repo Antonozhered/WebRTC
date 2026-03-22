@@ -22,7 +22,8 @@
             width: 800px;
             height: 600px;
             border: 2px solid #00ff00;
-            background: #000;
+            background-image: url('./assets/gameArea_background.png');
+            background-size: cover;
         }
 
         #spaceship {
@@ -93,6 +94,23 @@
             text-align: center;
             z-index: 200;
             font-family: monospace;
+        }
+
+        #cameraBox {
+            position: relative;
+            margin: 10px auto;
+            width: 120px;
+            height: 120px;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #playerCamera {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
         }
 
         #endScreen h2 {
@@ -583,7 +601,9 @@
     </div>
     <div id="endScreen" class="hidden">
         <h2>GAME OVER</h2>
-        
+        <div id="cameraBox">
+            <video id="playerCamera" autoplay muted playsinline></video>
+        </div>
         <p id="finalScore"></p>
         <p id="finalWave"></p>
         <button id="playAgain">PLAY AGAIN</button>
@@ -602,6 +622,7 @@
         const startButton = document.getElementById('startButton');
         const qrDiv = document.getElementById('qr');
         const endScreen = document.getElementById('endScreen');
+        const playerCamera = document.getElementById('playerCamera');
         const finalScore = document.getElementById('finalScore');
         const finalWave = document.getElementById('finalWave');
         const playAgainButton = document.getElementById('playAgain');
@@ -937,10 +958,64 @@
             requestAnimationFrame(gameLoop);
         };
 
+        const requestLocalCamera = async () => {
+            console.log('Requesting local camera for end screen...');
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.warn('No camera API available');
+                showCameraFallback('No camera API');
+                return;
+            }
+
+            try {
+                console.log('Requesting camera permission...');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 120 },
+                        height: { ideal: 120 },
+                        facingMode: 'user' // Prefer front camera on mobile
+                    },
+                    audio: false
+                });
+                console.log('Camera stream obtained successfully');
+                playerCamera.srcObject = stream;
+                playerCamera.style.display = 'block';
+                await playerCamera.play();
+                console.log('Camera playing in end screen');
+            } catch (err) {
+                console.error('Camera access failed:', err);
+                let message = 'Camera denied';
+                if (err.name === 'NotAllowedError') {
+                    message = 'Permission denied';
+                } else if (err.name === 'NotFoundError') {
+                    message = 'No camera found';
+                } else if (err.name === 'NotReadableError') {
+                    message = 'Camera in use';
+                }
+                showCameraFallback(message);
+            }
+        };
+
+        const showCameraFallback = (message) => {
+            const cameraBox = document.getElementById('cameraBox');
+            playerCamera.style.display = 'none';
+            cameraBox.innerHTML += `<div style="position:absolute; top:0; left:0; width:120px; height:120px; background:#333; color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; text-align:center; border-radius:8px;">${message}</div>`;
+        };
+
         const showEndScreen = () => {
             endScreen.classList.remove('hidden');
             finalScore.textContent = `Final Score: ${score}`;
             finalWave.textContent = `Wave Reached: ${wave}`;
+
+            // Try to use sender's camera stream from peer connection
+            if (peer && peer.streams && peer.streams.length > 0) {
+                console.log('Using sender camera stream for end screen');
+                playerCamera.srcObject = peer.streams[0];
+                playerCamera.play().catch(() => { });
+            } else if (!playerCamera.srcObject) {
+                // Fallback: request local camera if no sender stream available
+                console.log('No sender camera stream, requesting local camera');
+                requestLocalCamera();
+            }
         };
 
         const resetGame = () => {
@@ -1037,6 +1112,18 @@
                 startButton.disabled = false;
             });
 
+            peer.on('stream', (stream) => {
+                // Remote sender camera stream received
+                console.log('Received sender camera stream');
+                try {
+                    playerCamera.srcObject = stream;
+                    playerCamera.play().catch(() => { });
+                    console.log('Sender camera stream set successfully');
+                } catch (error) {
+                    console.warn('Failed to set sender camera stream on player camera', error);
+                }
+            });
+
             peer.on('data', (data) => {
                 try {
                     const command = JSON.parse(data);
@@ -1121,9 +1208,6 @@
         playAgainButton.addEventListener('click', () => {
             resetGame();
         });
-
-        
-
 
         window.addEventListener('DOMContentLoaded', init);
     </script>
